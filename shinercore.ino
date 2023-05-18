@@ -47,7 +47,7 @@ void DawnAnim(Animation *self, SubStrip *strip, float t)
 {
     for(int i = 0; i < strip->numPixels(); i++)
     {
-        (*strip)[i] = CRGB(255, 100, 0) * gammaf(curve(t - i/10.0f))/2.0f + CRGB(240, 255, 0) * gammaf(curve(t + i/4.0f))/2.0f;
+        (*strip)[i] = CRGB(255, 100, 0) * (gammaf(curve(t - i/10.0f))/2.0f) + CRGB(240, 255, 0) * (gammaf(curve(t + i/4.0f))/2.0f);
     }
 }
 
