@@ -3,6 +3,8 @@
 #include <OverAnimate.h>
 #include <SubStrip.h>
 #include <ArduinoBLE.h>
+#include <Preferences.h>
+
 ////// Animation things
 
 enum RunMode
@@ -55,12 +57,79 @@ StripAnimation doubleCrawlAnim(DoubleCrawlAnim, &left, 0.5, true);
 
 ////// Communication things
 
+Preferences prefs;
+
+class StoredProperty 
+{
+public:
+    StoredProperty(const char *uuid, const char *key, String defaultValue, std::function<void(String&)> applicator)
+      : chara(uuid, BLERead | BLEWrite, 36),
+        key(key),
+        value(defaultValue),
+        applicator(applicator)
+    {
+        load();
+    }
+    void set(String &newVal)
+    {
+        value = newVal;
+        chara.writeValue(newVal);
+        save();
+        applicator(newVal);
+    }
+    String get()
+    {
+        return value;
+    }
+
+    void advertise(BLEService &onService)
+    {
+        onService.addCharacteristic(chara);
+    }
+    void poll()
+    {
+        if(chara.written())
+        {
+            String oldValue = value;
+            String newValue = chara.value();
+            set(newValue);
+        }
+    }
+protected:
+    void load()
+    {
+        value = prefs.getString(key, value);
+        chara.writeValue(value);
+        applicator(value);
+        Serial.print(key); Serial.print(" loaded initial value "); Serial.println(value);
+    }
+    void save()
+    {
+        prefs.putString(key, value);
+        Serial.print(key); Serial.print(" saved new value "); Serial.println(value);
+    }
+protected:
+    BLEStringCharacteristic chara;
+    const char *key;
+    String value;
+    std::function<void(String&)> applicator;
+};
+
 BLEService shinerService("6c0de004-629d-4717-bed5-847fddfbdc2e");
-BLEStringCharacteristic speedCharacteristic("5341966c-da42-4b65-9c27-5de57b642e28", BLERead | BLEWrite, 36);
+StoredProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5", [](String &newValue) {
+    doubleCrawlAnim.duration = newValue.toFloat();
+});
+StoredProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color", "0,255,0", [](String &newValue) {
+    
+});
+
+std::array<StoredProperty*, 2> props = {&speedProp, &colorProp};
 
 
 void commsSetup()
 {
+    prefs.begin("shinercore");
+
     if (!BLE.begin()) {
         Serial.println("starting Bluetooth® Low Energy module failed!");
         while (1);
@@ -68,8 +137,10 @@ void commsSetup()
     BLE.setDeviceName("shinercore");
     BLE.setLocalName("shinercore");
 
-    shinerService.addCharacteristic(speedCharacteristic);
-    speedCharacteristic.writeValue(String(doubleCrawlAnim.duration));
+    for(const auto& prop: props)
+    {
+        prop->advertise(shinerService);
+    }
     
     BLE.setAdvertisedService(shinerService);
     BLE.addService(shinerService);
@@ -80,9 +151,9 @@ void commsLoop()
 {
     BLE.poll();
 
-    if(speedCharacteristic.written())
+    for(const auto& prop: props)
     {
-        doubleCrawlAnim.duration = speedCharacteristic.value().toFloat();
+        prop->poll();
     }
 }
 
@@ -91,6 +162,7 @@ void commsLoop()
 
 void setup() {
     M5.begin();
+    Serial.begin(115200);
     FastLED.addLeds<WS2811, 2, GRB>(lstrip, lstrip_count);
     FastLED.addLeds<WS2811, 35, GRB>(btnled, 1);
     left.fill(CRGB::Black);
