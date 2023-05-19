@@ -53,7 +53,7 @@ void DoubleCrawlAnim(Animation *self, SubStrip *strip, float t)
         (*strip)[i] = CRGB(255, 100, 0) * (gammaf(curve(t - i/10.0f))/2.0f) + CRGB(240, 255, 0) * (gammaf(curve(t + i/4.0f))/2.0f);
     }
 }
-StripAnimation doubleCrawlAnim(DoubleCrawlAnim, &left, 0.5, true);
+StripAnimation doubleCrawlAnim(DoubleCrawlAnim, &left, 2.0, true);
 
 ////// Communication things
 
@@ -62,7 +62,7 @@ Preferences prefs;
 class StoredProperty 
 {
 public:
-    StoredProperty(const char *uuid, const char *key, String defaultValue, std::function<void(String&)> applicator)
+    StoredProperty(const char *uuid, const char *key, String defaultValue, std::function<void(const String&)> applicator)
       : chara(uuid, BLERead | BLEWrite, 36),
         key(key),
         value(defaultValue),
@@ -70,7 +70,7 @@ public:
     {
         load();
     }
-    void set(String &newVal)
+    void set(const String &newVal)
     {
         value = newVal;
         chara.writeValue(newVal);
@@ -105,30 +105,42 @@ protected:
     }
     void save()
     {
-        prefs.putString(key, value);
+        if (prefs.putString(key, value) == 0)
+        {
+            Serial.println("failed to store preferences!");
+            while (1);
+        }
         Serial.print(key); Serial.print(" saved new value "); Serial.println(value);
     }
 protected:
     BLEStringCharacteristic chara;
     const char *key;
     String value;
-    std::function<void(String&)> applicator;
+    std::function<void(const String&)> applicator;
 };
 
 BLEService shinerService("6c0de004-629d-4717-bed5-847fddfbdc2e");
-StoredProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5", [](String &newValue) {
+
+StoredProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5", [](const String &newValue) {
     doubleCrawlAnim.duration = newValue.toFloat();
 });
-StoredProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color", "0,255,0", [](String &newValue) {
+StoredProperty modeProp("70d4cabe-82cc-470a-a572-95c23f1316ff", "mode", "1", [](const String &newValue) {
+    setMode((RunMode)newValue.toInt());
+});
+StoredProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color", "0,255,0", [](const String &newValue) {
     
 });
 
-std::array<StoredProperty*, 2> props = {&speedProp, &colorProp};
+std::array<StoredProperty*, 3> props = {&speedProp, &modeProp, &colorProp};
 
 
 void commsSetup()
 {
-    prefs.begin("shinercore");
+    if (!prefs.begin("shinercore"))
+    {
+        Serial.println("failed to read preferences!");
+        while (1);
+    }
 
     if (!BLE.begin()) {
         Serial.println("starting Bluetooth® Low Energy module failed!");
@@ -171,8 +183,6 @@ void setup() {
     ansys.addAnimation(&doubleCrawlAnim);
 
     commsSetup();
-
-    setMode(DoubleCrawl);
 }
 
 unsigned long lastMillis;
@@ -213,6 +223,8 @@ void update()
 {
     if(M5.BtnA.wasPressed())
     {
-        setMode((RunMode)((runMode + 1) % RunModeCount));
+        RunMode newMode = (RunMode)((runMode + 1) % RunModeCount);
+        String modeStr = String((int)newMode);
+        modeProp.set(modeStr);
     }
 }
