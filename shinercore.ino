@@ -161,7 +161,11 @@ StoredProperty color2Prop("83595a76-1b17-4158-bcee-e702c3165caf", "color2", "240
     secondaryColor = rgbFromString(newValue);
 });
 
-std::array<StoredProperty*, 4> props = {&speedProp, &modeProp, &colorProp, &color2Prop};
+StoredProperty brightnessProp("2B01", "brightness", "255", [](const String &newValue) {
+    FastLED.setBrightness(newValue.toInt());
+});
+
+std::array<StoredProperty*, 5> props = {&speedProp, &modeProp, &colorProp, &color2Prop, &brightnessProp};
 
 
 void commsSetup()
@@ -245,7 +249,7 @@ void setMode(RunMode newMode)
     if(runMode == Off) {
         FastLED.setBrightness(0);
     } else {
-        FastLED.setBrightness(255);
+        FastLED.setBrightness(brightnessProp.get().toInt());
     }
 }
 
