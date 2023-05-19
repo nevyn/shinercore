@@ -2,11 +2,7 @@
 #include "FastLED.h"
 #include <OverAnimate.h>
 #include <SubStrip.h>
-#include <BLEDevice.h>
-#include <BLEUtils.h>
-#include <BLEServer.h>
-#include <BLE2902.h>
-
+#include <ArduinoBLE.h>
 ////// Animation things
 
 enum RunMode
@@ -58,47 +54,36 @@ void DoubleCrawlAnim(Animation *self, SubStrip *strip, float t)
 StripAnimation doubleCrawlAnim(DoubleCrawlAnim, &left, 0.5, true);
 
 ////// Communication things
-BLEServer *server = NULL;
 
-#define kAllCharacteristicProperties BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_INDICATE
+BLEService shinerService("6c0de004-629d-4717-bed5-847fddfbdc2e");
+BLEStringCharacteristic speedCharacteristic("5341966c-da42-4b65-9c27-5de57b642e28", BLERead | BLEWrite, 36);
 
-#define kServiceUUID        "6c0de004-629d-4717-bed5-847fddfbdc2e"
-BLEService* service = NULL;
-
-#define kSpeedCharacteristicUUID "5341966c-da42-4b65-9c27-5de57b642e28"
-struct SpeedCharacteristic : public BLECharacteristicCallbacks
-{
-    BLECharacteristic *chara;
-    void onRead(BLECharacteristic *chara)
-    {
-        Serial.println("Hello reading duration");
-        chara->setValue(doubleCrawlAnim.duration);
-    }
-    
-    void onWrite(BLECharacteristic *chara)
-    {
-        std::string val = chara->getValue();
-        Serial.print("Hello reading duration");
-        Serial.println(val.c_str());
-        doubleCrawlAnim.duration = std::stof(val);
-    }
-};
-
-SpeedCharacteristic speedChara;
 
 void commsSetup()
 {
-    Serial.begin(115200);
+    if (!BLE.begin()) {
+        Serial.println("starting Bluetooth® Low Energy module failed!");
+        while (1);
+    }
+    BLE.setDeviceName("shinercore");
+    BLE.setLocalName("shinercore");
 
-    BLEDevice::init("shinercore");
-    server = BLEDevice::createServer();
-    service = server->createService(kServiceUUID);
-    speedChara.chara = service->createCharacteristic(kSpeedCharacteristicUUID, kAllCharacteristicProperties);
-    speedChara.chara->addDescriptor(new BLE2902());
+    shinerService.addCharacteristic(speedCharacteristic);
+    speedCharacteristic.writeValue(String(doubleCrawlAnim.duration));
+    
+    BLE.setAdvertisedService(shinerService);
+    BLE.addService(shinerService);
+    BLE.advertise();
+}
 
-    service->start();
-    BLEAdvertising *ad = server->getAdvertising();
-    ad->start();
+void commsLoop()
+{
+    BLE.poll();
+
+    if(speedCharacteristic.written())
+    {
+        doubleCrawlAnim.duration = speedCharacteristic.value().toFloat();
+    }
 }
 
 
@@ -134,6 +119,8 @@ void loop() {
 
     ansys.playElapsedTime(delta);
     FastLED.show();
+
+    commsLoop();
 }
 
 void setMode(RunMode newMode)
