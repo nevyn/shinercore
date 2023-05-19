@@ -68,7 +68,6 @@ public:
         value(defaultValue),
         applicator(applicator)
     {
-        load();
     }
     void set(const String &newVal)
     {
@@ -95,7 +94,6 @@ public:
             set(newValue);
         }
     }
-protected:
     void load()
     {
         value = prefs.getString(key, value);
@@ -103,6 +101,7 @@ protected:
         applicator(value);
         Serial.print(key); Serial.print(" loaded initial value "); Serial.println(value);
     }
+protected:
     void save()
     {
         if (prefs.putString(key, value) == 0)
@@ -151,6 +150,7 @@ void commsSetup()
 
     for(const auto& prop: props)
     {
+        prop->load();
         prop->advertise(shinerService);
     }
     
@@ -159,7 +159,7 @@ void commsSetup()
     BLE.advertise();
 }
 
-void commsLoop()
+void commsUpdate()
 {
     BLE.poll();
 
@@ -198,11 +198,10 @@ void loop() {
     TimeInterval delta = diff/1000.0;
     
     update();
+    commsUpdate();
 
     ansys.playElapsedTime(delta);
     FastLED.show();
-
-    commsLoop();
 }
 
 void setMode(RunMode newMode)
