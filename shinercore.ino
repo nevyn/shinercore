@@ -15,7 +15,7 @@ enum RunMode
     RunModeCount
 } runMode;
 
-static const int lstrip_count = 80;
+static const int lstrip_count = 400;
 CRGB lstrip[lstrip_count];
 SubStrip left(lstrip, lstrip_count);
 
