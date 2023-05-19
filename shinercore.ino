@@ -151,21 +151,21 @@ BLEService shinerService("6c0de004-629d-4717-bed5-847fddfbdc2e");
 StoredProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5", [](const String &newValue) {
     doubleCrawlAnim.duration = newValue.toFloat();
 });
-StoredProperty modeProp("70d4cabe-82cc-470a-a572-95c23f1316ff", "mode", "1", [](const String &newValue) {
-    setMode((RunMode)newValue.toInt());
-});
 StoredProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color1", "255 100 0", [](const String &newValue) {
     mainColor = rgbFromString(newValue);
+    if (runMode == 1) buttonled.fill(mainColor);
 });
 StoredProperty color2Prop("83595a76-1b17-4158-bcee-e702c3165caf", "color2", "240 255 0", [](const String &newValue) {
     secondaryColor = rgbFromString(newValue);
 });
-
+StoredProperty modeProp("70d4cabe-82cc-470a-a572-95c23f1316ff", "mode", "1", [](const String &newValue) {
+    setMode((RunMode)newValue.toInt());
+});
 StoredProperty brightnessProp("2B01", "brightness", "255", [](const String &newValue) {
     FastLED.setBrightness(newValue.toInt());
 });
 
-std::array<StoredProperty*, 5> props = {&speedProp, &modeProp, &colorProp, &color2Prop, &brightnessProp};
+std::array<StoredProperty*, 5> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp};
 
 
 void commsSetup()
@@ -244,7 +244,7 @@ void setMode(RunMode newMode)
     runMode = newMode;
     Serial.print("New mode: ");
     Serial.println(runMode);
-    buttonled.fill(runMode==0 ? CRGB::Black : runMode==1 ? CRGB::Red : CRGB::Green);
+    buttonled.fill(runMode==0 ? CRGB::Black : runMode==1 ? mainColor : secondaryColor);
 
     if(runMode == Off) {
         FastLED.setBrightness(0);
