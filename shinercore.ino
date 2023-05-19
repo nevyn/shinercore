@@ -22,6 +22,9 @@ SubStrip left(lstrip, lstrip_count);
 CRGB btnled[1];
 SubStrip buttonled(btnled, 1);
 
+CRGB mainColor(255, 100, 0);
+CRGB secondaryColor(240, 255, 0);
+
 AnimationSystem ansys;
 
 typedef void(*StripFunc)(Animation*, SubStrip *strip, float);
@@ -50,15 +53,22 @@ void DoubleCrawlAnim(Animation *self, SubStrip *strip, float t)
 {
     for(int i = 0; i < strip->numPixels(); i++)
     {
-        (*strip)[i] = CRGB(255, 100, 0) * (gammaf(curve(t - i/10.0f))/2.0f) + CRGB(240, 255, 0) * (gammaf(curve(t + i/4.0f))/2.0f);
+        (*strip)[i] = mainColor * (gammaf(curve(t - i/10.0f))/2.0f) + secondaryColor * (gammaf(curve(t + i/4.0f))/2.0f);
     }
 }
 StripAnimation doubleCrawlAnim(DoubleCrawlAnim, &left, 2.0, true);
 
 ////// Communication things
 
-Preferences prefs;
+#define kDescriptorUserDesc "2901"
+#define kDescriptorClientCharacteristic "2902"
+#define kDescriptorServerCharacteristic "2903"
+#define kDescriptorPresentationFormat "2904"
+#define kDescriptorPresentationFormat_S32 "10"
+#define kDescriptorPresentationFormat_Float32 "14"
+#define kDescriptorPresentationFormat_String "19"
 
+Preferences prefs;
 class StoredProperty 
 {
 public:
@@ -66,8 +76,12 @@ public:
       : chara(uuid, BLERead | BLEWrite, 36),
         key(key),
         value(defaultValue),
-        applicator(applicator)
+        applicator(applicator),
+        nameDescriptor(kDescriptorUserDesc, key),
+        formatDescriptor(kDescriptorPresentationFormat, kDescriptorPresentationFormat_String)
     {
+        chara.addDescriptor(nameDescriptor);
+        chara.addDescriptor(formatDescriptor);
     }
     void set(const String &newVal)
     {
@@ -116,7 +130,21 @@ protected:
     const char *key;
     String value;
     std::function<void(const String&)> applicator;
+
+    BLEDescriptor nameDescriptor;
+    BLEDescriptor formatDescriptor;
 };
+
+CRGB rgbFromString(const String &str)
+{
+    int firstSpace = str.indexOf(' ');
+    int secondSpace = str.lastIndexOf(' ');
+    return CRGB(
+        str.substring(0, firstSpace).toInt(), 
+        str.substring(firstSpace+1, secondSpace).toInt(),
+        str.substring(secondSpace+1, str.length()).toInt()
+    );
+}
 
 BLEService shinerService("6c0de004-629d-4717-bed5-847fddfbdc2e");
 
@@ -126,11 +154,14 @@ StoredProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5",
 StoredProperty modeProp("70d4cabe-82cc-470a-a572-95c23f1316ff", "mode", "1", [](const String &newValue) {
     setMode((RunMode)newValue.toInt());
 });
-StoredProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color", "0,255,0", [](const String &newValue) {
-    
+StoredProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color1", "255 100 0", [](const String &newValue) {
+    mainColor = rgbFromString(newValue);
+});
+StoredProperty color2Prop("83595a76-1b17-4158-bcee-e702c3165caf", "color2", "240 255 0", [](const String &newValue) {
+    secondaryColor = rgbFromString(newValue);
 });
 
-std::array<StoredProperty*, 3> props = {&speedProp, &modeProp, &colorProp};
+std::array<StoredProperty*, 4> props = {&speedProp, &modeProp, &colorProp, &color2Prop};
 
 
 void commsSetup()
