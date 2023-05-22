@@ -130,7 +130,7 @@ public:
 protected:
     void save()
     {
-        if(value == "" || value == defaultValue)
+        if(value == "" || value == " " || value == defaultValue)
         {
             prefs.remove(key);
             value = defaultValue;
