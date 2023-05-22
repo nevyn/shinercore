@@ -18,6 +18,10 @@ enum RunMode
 static const int lstrip_count = 400;
 CRGB lstrip[lstrip_count];
 SubStrip left(lstrip, lstrip_count);
+static const int rstrip_count = 400;
+CRGB rstrip[rstrip_count];
+SubStrip right(rstrip, rstrip_count);
+ProxyStrip allstrips({&left, &right});
 
 CRGB btnled[1];
 SubStrip buttonled(btnled, 1);
@@ -59,7 +63,7 @@ void DoubleCrawlAnim(Animation *self, SubStrip *strip, float t)
         (*strip)[i] = mainColor * (gammaf(curve(t - i/p_tau))/2.0f) + secondaryColor * (gammaf(curve(t + i/p_phi))/2.0f);
     }
 }
-StripAnimation doubleCrawlAnim(DoubleCrawlAnim, &left, 2.0, true);
+StripAnimation doubleCrawlAnim(DoubleCrawlAnim, &allstrips, 2.0, true);
 
 ////// Communication things
 
@@ -247,7 +251,7 @@ void setup() {
     Serial.begin(115200);
     FastLED.addLeds<WS2811, GROVE1_PIN, GRB>(lstrip, lstrip_count);
     FastLED.addLeds<WS2811, NEO_PIN, GRB>(btnled, 1);
-    left.fill(CRGB::Black);
+    allstrips.fill(CRGB::Black);
     FastLED.show();
 
     ansys.addAnimation(&doubleCrawlAnim);
