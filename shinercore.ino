@@ -230,14 +230,14 @@ void commsUpdate()
 
 ///// Runtime things
 
-#if defined(ARDUINO_M5STACK_ATOM) || defined(ARDUINO_M5Stack_ATOM)
-    #define GROVE1_PIN 26
-    #define GROVE2_PIN 32
-    #define NEO_PIN 27
-#elif defined(CONFIG_IDF_TARGET_ESP32S3) // M5AtomLiteS3
+#if defined(CONFIG_IDF_TARGET_ESP32S3) // M5AtomLiteS3
     #define GROVE1_PIN 1
     #define GROVE2_PIN 2
     #define NEO_PIN 35
+#elif defined(ARDUINO_M5STACK_ATOM) || defined(ARDUINO_M5Stack_ATOM)
+    #define GROVE1_PIN 26
+    #define GROVE2_PIN 32
+    #define NEO_PIN 27
 #elif defined(ARDUINO_M5Stick_C) || defined(ARDUINO_M5Stick_C_PLUS)
     #define GROVE1_PIN 32
     #define GROVE2_PIN 33
