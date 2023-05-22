@@ -76,6 +76,7 @@ public:
       : chara(uuid, BLERead | BLEWrite, 36),
         key(key),
         value(defaultValue),
+        defaultValue(defaultValue),
         applicator(applicator),
         nameDescriptor(kDescriptorUserDesc, key),
         formatDescriptor(kDescriptorPresentationFormat, kDescriptorPresentationFormat_String)
@@ -118,7 +119,12 @@ public:
 protected:
     void save()
     {
-        if (prefs.putString(key, value) == 0)
+        if(value == "" || value == defaultValue)
+        {
+            prefs.remove(key);
+            value = defaultValue;
+        }
+        else if(prefs.putString(key, value) == 0)
         {
             Serial.println("failed to store preferences!");
             while (1);
@@ -129,6 +135,7 @@ protected:
     BLEStringCharacteristic chara;
     const char *key;
     String value;
+    const String defaultValue;
     std::function<void(const String&)> applicator;
 
     BLEDescriptor nameDescriptor;
