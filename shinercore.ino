@@ -210,8 +210,33 @@ void commsUpdate()
 void setup() {
     M5.begin();
     Serial.begin(115200);
-    FastLED.addLeds<WS2811, 2, GRB>(lstrip, lstrip_count);
-    FastLED.addLeds<WS2811, 35, GRB>(btnled, 1);
+
+    int grove1_pin, grove2_pin, neo_pin;
+    switch(M5.getBoard()) {
+        case m5::board_t::board_M5Atom:
+            grove1_pin = 26;
+            grove2_pin = 32;
+            neo_pin = 27;
+            break;
+        case m5::board_t::board_M5AtomS3:
+            grove1_pin = 1;
+            grove2_pin = 2;
+            neo_pin = 35;
+            break;
+        case m5::board_t::board_M5StickCPlus:
+            grove1_pin = 32;
+            grove2_pin = 33;
+            neo_pin = 26; // doesn't have one; this pin is just unused
+            break;
+        default:
+            Serial.println("Invalid board");
+            while(true);
+    }
+
+    FastLED.addLeds<WS2811, grove1_pin, GRB>(lstrip, lstrip_count);
+    FastLED.addLeds<WS2811, neo_pin, GRB>(btnled, 1);
+
+
     left.fill(CRGB::Black);
     FastLED.show();
 
