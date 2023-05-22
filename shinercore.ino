@@ -32,6 +32,8 @@ CRGB secondaryColor(240, 255, 0);
 float p_tau = 10.0;
 float p_phi = 4.0;
 
+String ownerName = "unknown";
+
 AnimationSystem ansys;
 
 typedef void(*StripFunc)(Animation*, SubStrip *strip, float);
@@ -187,8 +189,11 @@ StoredProperty tauProp("d879c81a-09f0-4a24-a66c-cebf358bb97a", "tau", "10.0", "-
 StoredProperty phiProp("df6f0905-09bd-4bf6-b6f5-45b5a4d20d52", "phi", "4.0", "-100.0,100.0", [](const String &newValue) {
     p_phi = newValue.toFloat();
 });
+StoredProperty nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", "unknown", "", [](const String &newValue) {
+    ownerName = newValue;
+});
 
-std::array<StoredProperty*, 7> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp};
+std::array<StoredProperty*, 8> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp, &nameProp};
 
 
 void commsSetup()
@@ -203,14 +208,16 @@ void commsSetup()
         Serial.println("starting Bluetooth® Low Energy module failed!");
         while (1);
     }
-    BLE.setDeviceName("shinercore");
-    BLE.setLocalName("shinercore");
 
     for(const auto& prop: props)
     {
         prop->load();
         prop->advertise(shinerService);
     }
+
+    String name = ownerName + "'s shinercore";
+    BLE.setDeviceName(name.c_str());
+    BLE.setLocalName(name.c_str());
     
     BLE.setAdvertisedService(shinerService);
     BLE.addService(shinerService);
@@ -231,8 +238,8 @@ void commsUpdate()
 ///// Runtime things
 
 #if defined(CONFIG_IDF_TARGET_ESP32S3) // M5AtomLiteS3
-    #define GROVE1_PIN 1
-    #define GROVE2_PIN 2
+    #define GROVE1_PIN 2
+    #define GROVE2_PIN 1
     #define NEO_PIN 35
 #elif defined(ARDUINO_M5STACK_ATOM) || defined(ARDUINO_M5Stack_ATOM)
     #define GROVE1_PIN 26
