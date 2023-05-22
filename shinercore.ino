@@ -250,6 +250,7 @@ void setup() {
     M5.begin();
     Serial.begin(115200);
     FastLED.addLeds<WS2811, GROVE1_PIN, GRB>(lstrip, lstrip_count);
+    FastLED.addLeds<WS2811, GROVE2_PIN, GRB>(rstrip, rstrip_count);
     FastLED.addLeds<WS2811, NEO_PIN, GRB>(btnled, 1);
     allstrips.fill(CRGB::Black);
     FastLED.show();
