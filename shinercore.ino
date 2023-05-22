@@ -207,36 +207,27 @@ void commsUpdate()
 
 ///// Runtime things
 
+#if defined(ARDUINO_M5STACK_ATOM) || defined(ARDUINO_M5Stack_ATOM)
+    #define GROVE1_PIN 26
+    #define GROVE2_PIN 32
+    #define NEO_PIN 27
+#elif defined(CONFIG_IDF_TARGET_ESP32S3) // M5AtomLiteS3
+    #define GROVE1_PIN 1
+    #define GROVE2_PIN 2
+    #define NEO_PIN 35
+#elif defined(ARDUINO_M5Stick_C) || defined(ARDUINO_M5Stick_C_PLUS)
+    #define GROVE1_PIN 32
+    #define GROVE2_PIN 33
+    #define NEO_PIN 26 // doesn't have one; this pin is just unused
+#else
+    #error undefined hardware
+#endif
+
 void setup() {
     M5.begin();
     Serial.begin(115200);
-
-    int grove1_pin, grove2_pin, neo_pin;
-    switch(M5.getBoard()) {
-        case m5::board_t::board_M5Atom:
-            grove1_pin = 26;
-            grove2_pin = 32;
-            neo_pin = 27;
-            break;
-        case m5::board_t::board_M5AtomS3:
-            grove1_pin = 1;
-            grove2_pin = 2;
-            neo_pin = 35;
-            break;
-        case m5::board_t::board_M5StickCPlus:
-            grove1_pin = 32;
-            grove2_pin = 33;
-            neo_pin = 26; // doesn't have one; this pin is just unused
-            break;
-        default:
-            Serial.println("Invalid board");
-            while(true);
-    }
-
-    FastLED.addLeds<WS2811, grove1_pin, GRB>(lstrip, lstrip_count);
-    FastLED.addLeds<WS2811, neo_pin, GRB>(btnled, 1);
-
-
+    FastLED.addLeds<WS2811, GROVE1_PIN, GRB>(lstrip, lstrip_count);
+    FastLED.addLeds<WS2811, NEO_PIN, GRB>(btnled, 1);
     left.fill(CRGB::Black);
     FastLED.show();
 
