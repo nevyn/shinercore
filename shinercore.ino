@@ -25,6 +25,9 @@ SubStrip buttonled(btnled, 1);
 CRGB mainColor(255, 100, 0);
 CRGB secondaryColor(240, 255, 0);
 
+float p_tau = 10.0;
+float p_phi = 4.0;
+
 AnimationSystem ansys;
 
 typedef void(*StripFunc)(Animation*, SubStrip *strip, float);
@@ -53,7 +56,7 @@ void DoubleCrawlAnim(Animation *self, SubStrip *strip, float t)
 {
     for(int i = 0; i < strip->numPixels(); i++)
     {
-        (*strip)[i] = mainColor * (gammaf(curve(t - i/10.0f))/2.0f) + secondaryColor * (gammaf(curve(t + i/4.0f))/2.0f);
+        (*strip)[i] = mainColor * (gammaf(curve(t - i/p_tau))/2.0f) + secondaryColor * (gammaf(curve(t + i/p_phi))/2.0f);
     }
 }
 StripAnimation doubleCrawlAnim(DoubleCrawlAnim, &left, 2.0, true);
@@ -67,19 +70,21 @@ StripAnimation doubleCrawlAnim(DoubleCrawlAnim, &left, 2.0, true);
 #define kDescriptorPresentationFormat_S32 "10"
 #define kDescriptorPresentationFormat_Float32 "14"
 #define kDescriptorPresentationFormat_String "19"
+#define kDescriptorValidRange "2906"
 
 Preferences prefs;
 class StoredProperty 
 {
 public:
-    StoredProperty(const char *uuid, const char *key, String defaultValue, std::function<void(const String&)> applicator)
+    StoredProperty(const char *uuid, const char *key, String defaultValue, const char *range, std::function<void(const String&)> applicator)
       : chara(uuid, BLERead | BLEWrite, 36),
         key(key),
         value(defaultValue),
         defaultValue(defaultValue),
         applicator(applicator),
         nameDescriptor(kDescriptorUserDesc, key),
-        formatDescriptor(kDescriptorPresentationFormat, kDescriptorPresentationFormat_String)
+        formatDescriptor(kDescriptorPresentationFormat, kDescriptorPresentationFormat_String),
+        rangeDescriptor(kDescriptorValidRange, range)
     {
         chara.addDescriptor(nameDescriptor);
         chara.addDescriptor(formatDescriptor);
@@ -140,6 +145,7 @@ protected:
 
     BLEDescriptor nameDescriptor;
     BLEDescriptor formatDescriptor;
+    BLEDescriptor rangeDescriptor;
 };
 
 CRGB rgbFromString(const String &str)
@@ -155,24 +161,30 @@ CRGB rgbFromString(const String &str)
 
 BLEService shinerService("6c0de004-629d-4717-bed5-847fddfbdc2e");
 
-StoredProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5", [](const String &newValue) {
+StoredProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5", "0.0,100.0", [](const String &newValue) {
     doubleCrawlAnim.duration = newValue.toFloat();
 });
-StoredProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color1", "255 100 0", [](const String &newValue) {
+StoredProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color1", "255 100 0", "0 0 0,255 255 255", [](const String &newValue) {
     mainColor = rgbFromString(newValue);
     if (runMode == 1) buttonled.fill(mainColor);
 });
-StoredProperty color2Prop("83595a76-1b17-4158-bcee-e702c3165caf", "color2", "240 255 0", [](const String &newValue) {
+StoredProperty color2Prop("83595a76-1b17-4158-bcee-e702c3165caf", "color2", "240 255 0", "0 0 0,255 255 255", [](const String &newValue) {
     secondaryColor = rgbFromString(newValue);
 });
-StoredProperty modeProp("70d4cabe-82cc-470a-a572-95c23f1316ff", "mode", "1", [](const String &newValue) {
+StoredProperty modeProp("70d4cabe-82cc-470a-a572-95c23f1316ff", "mode", "1", "0,1", [](const String &newValue) {
     setMode((RunMode)newValue.toInt());
 });
-StoredProperty brightnessProp("2B01", "brightness", "255", [](const String &newValue) {
+StoredProperty brightnessProp("2B01", "brightness", "255", "0-255", [](const String &newValue) {
     FastLED.setBrightness(newValue.toInt());
 });
+StoredProperty tauProp("d879c81a-09f0-4a24-a66c-cebf358bb97a", "tau", "10.0", "-100.0,100.0", [](const String &newValue) {
+    p_tau = newValue.toFloat();
+});
+StoredProperty phiProp("df6f0905-09bd-4bf6-b6f5-45b5a4d20d52", "phi", "4.0", "-100.0,100.0", [](const String &newValue) {
+    p_phi = newValue.toFloat();
+});
 
-std::array<StoredProperty*, 5> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp};
+std::array<StoredProperty*, 7> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp};
 
 
 void commsSetup()
