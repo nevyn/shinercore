@@ -98,9 +98,9 @@ public:
     void set(const String &newVal)
     {
         value = newVal;
-        chara.writeValue(newVal);
         save();
-        applicator(newVal);
+        chara.writeValue(value);
+        applicator(value);
     }
     String get()
     {
@@ -130,7 +130,7 @@ public:
 protected:
     void save()
     {
-        if(value == "" || value == " " || value == defaultValue)
+        if(value.isEmpty() || value.equals(" ") || value.equals(defaultValue))
         {
             prefs.remove(key);
             value = defaultValue;
