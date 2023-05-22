@@ -62,7 +62,7 @@ void DoubleCrawlAnim(Animation *self, SubStrip *strip, float t)
 {
     for(int i = 0; i < strip->numPixels(); i++)
     {
-        (*strip)[i] = mainColor * (gammaf(curve(t - i/p_tau))/2.0f) + secondaryColor * (gammaf(curve(t + i/p_phi))/2.0f);
+        strip->set(i, mainColor * (gammaf(curve(t - i/p_tau))/2.0f) + secondaryColor * (gammaf(curve(t + i/p_phi))/2.0f));
     }
 }
 StripAnimation doubleCrawlAnim(DoubleCrawlAnim, &allstrips, 2.0, true);
@@ -238,8 +238,8 @@ void commsUpdate()
 ///// Runtime things
 
 #if defined(CONFIG_IDF_TARGET_ESP32S3) // M5AtomLiteS3
-    #define GROVE1_PIN 2
-    #define GROVE2_PIN 1
+    #define GROVE1_PIN 1
+    #define GROVE2_PIN 2
     #define NEO_PIN 35
 #elif defined(ARDUINO_M5STACK_ATOM) || defined(ARDUINO_M5Stack_ATOM)
     #define GROVE1_PIN 26
