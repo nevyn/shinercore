@@ -307,7 +307,9 @@ void commsSetup(void)
     
     BLE.setAdvertisedService(shinerService);
     BLE.addService(shinerService);
-    BLE.advertise();
+    if (BLE.advertise()) {
+        logger.println("Advertising...");
+    }
 
     // scan for other shinercores
     BLE.scanForUuid(shinerService.uuid());
@@ -325,6 +327,9 @@ void commsUpdate(void)
     BLEDevice otherCore = BLE.available();
     if(otherCore && std::find(failedCores.begin(), failedCores.end(), otherCore) == failedCores.end())
     {
+        // can't connect while scanning
+        BLE.stopScan();
+        
         logger.printf("Connecting to %s...\n", otherCore.localName().c_str());
         if(otherCore.connect())
         {
@@ -334,6 +339,9 @@ void commsUpdate(void)
             logger.printf("Failed to connect :'(\n");
             failedCores.push_back(otherCore);
         }
+
+        // all done connecting, keep scanning
+        BLE.scanForUuid(shinerService.uuid());
     }
 
 }
