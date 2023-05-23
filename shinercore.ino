@@ -53,9 +53,11 @@ float frand(void)
   return random(1000)/1000.0;
 }
 
+// Over the input range of 0.0f->1.0f, returns a single sinusoidal cycle
+// starting at 0.0f, with the peak at 1.0f.
 float curve(float progress)
 {
-    return sin(progress*6.28f)/2.0f + 0.5f;
+    return sin((progress-0.25)*6.28f)/2.0f + 0.5f;
 }
 
 void DoubleCrawlAnim(Animation *self, SubStrip *strip, float t)
