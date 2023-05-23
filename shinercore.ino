@@ -188,6 +188,11 @@ public:
         return value;
     }
 
+    const char* uuid()
+    {
+        return chara.uuid();
+    }
+
     void advertise(BLEService &onService)
     {
         onService.addCharacteristic(chara);
@@ -282,6 +287,16 @@ std::array<StoredProperty*, 8> props = {&speedProp, &colorProp, &color2Prop, &mo
 std::vector<BLEDevice> connectedCores;
 std::vector<BLEDevice> failedCores;
 
+class RemoteCore
+{
+public:
+    BLEDevice device;
+    BLECharacteristic colorProp;
+    bool connected;
+    bool failed;
+};
+std::vector<RemoteCore*> remoteCores;
+
 void commsSetup(void)
 {
     if (!prefs.begin("shinercore"))
@@ -324,17 +339,30 @@ void commsUpdate(void)
         prop->poll();
     }
 
+    // TODO: convert this to not-spaghetti and use RemoteCore to properly interrogate and track state
     BLEDevice otherCore = BLE.available();
     if(otherCore && std::find(failedCores.begin(), failedCores.end(), otherCore) == failedCores.end())
     {
         // can't connect while scanning
         BLE.stopScan();
-        
+
         logger.printf("Connecting to %s...\n", otherCore.localName().c_str());
         if(otherCore.connect())
         {
             logger.printf("Connected!\n");
             connectedCores.push_back(otherCore);
+
+            BLECharacteristic mainColor = otherCore.characteristic(colorProp.uuid());
+            if(mainColor)
+            {
+                char colorStr[255];
+                // see also: characteristic.valueUpdated()
+                mainColor.readValue(colorStr, 255);
+                logger.printf("That core has primary color %s\n", colorStr);
+            } else {
+                logger.printf("Booo, can't read its color prop :(\n");
+            }
+
         } else {
             logger.printf("Failed to connect :'(\n");
             failedCores.push_back(otherCore);
