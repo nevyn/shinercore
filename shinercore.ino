@@ -28,6 +28,8 @@ SubStrip buttonled(btnled, 1);
 
 CRGB mainColor(255, 100, 0);
 CRGB secondaryColor(240, 255, 0);
+static const int palette_count = 2;
+CRGB* palette[] = {&mainColor, &secondaryColor};
 
 float p_tau = 10.0;
 float p_phi = 4.0;
@@ -60,6 +62,7 @@ float curve(float progress)
     return sin((progress-0.25)*6.28f)/2.0f + 0.5f;
 }
 
+// Animation that crawls two sine waves against each other
 void DoubleCrawlAnim(Animation *self, SubStrip *strip, float t)
 {
     for(int i = 0; i < strip->numPixels(); i++)
@@ -69,6 +72,7 @@ void DoubleCrawlAnim(Animation *self, SubStrip *strip, float t)
 }
 StripAnimation doubleCrawlAnim(DoubleCrawlAnim, &allstrips, 2.0, true);
 
+// simple fade between two colors
 void BreatheAnim(Animation *self, SubStrip *strip, float t)
 {
     for(int i = 0; i < strip->numPixels(); i++)
@@ -78,8 +82,57 @@ void BreatheAnim(Animation *self, SubStrip *strip, float t)
 }
 StripAnimation breatheAnim(BreatheAnim, &allstrips, 2.0, true);
 
+// Port of Fire2012 by Mark Kriegsman
+// Adapted from https://github.com/bportaluri/ALA/blob/master/src/AlaLedRgb.cpp#L649 :) 
+void FireAnim(Animation *self, SubStrip *strip, float t)
+{
+    // does not work well with 400...
+    static const int numPixels = 50;
 
-std::array<StripAnimation*, 2> animations = {&doubleCrawlAnim, &breatheAnim};
+    // COOLING: How much does the air cool as it rises?
+    // Less cooling = taller flames.  More cooling = shorter flames.
+    // Default 550
+    #define COOLING  600
+
+    // SPARKING: What chance (out of 255) is there that a new spark will be lit?
+    // Higher chance = more roaring fire.  Lower chance = more flickery fire.
+    // Default 120, suggested range 50-200.
+    #define SPARKING 120
+
+    // Array of temperature readings at each simulation cell
+    static byte heat[numPixels];
+
+    // Step 1.  Cool down every cell a little
+    int rMax = (COOLING / numPixels) + 2;
+    for(int i=0; i<numPixels; i++)
+    {
+        heat[i] = std::max(((int)heat[i]) - (int)random(0, rMax), 0);
+    }
+
+    // Step 2.  Heat from each cell drifts 'up' and diffuses a little
+    for(int k=numPixels-1; k>=3; k--)
+    {
+        heat[k] = ((int)heat[k - 1] + (int)heat[k - 2] + (int)heat[k - 3] ) / 3;
+    }
+
+    // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
+    if(random(255) < SPARKING)
+    {
+        int y = random(7);
+        heat[y] = std::min(heat[y] + (int)random(160, 255), 255);
+    }
+
+    // Step 4.  Map from heat cells to LED colors
+    for(int j=0; j<numPixels; j++)
+    {
+        CRGB color = mainColor.lerp8(secondaryColor, heat[j]);
+        strip->set(j, color);
+    }
+}
+StripAnimation fireAnim(FireAnim, &allstrips, 2.0, true);
+
+
+std::array<StripAnimation*, 3> animations = {&doubleCrawlAnim, &breatheAnim, &fireAnim};
 
 ////// Communication things
 
