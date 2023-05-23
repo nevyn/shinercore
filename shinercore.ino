@@ -69,6 +69,18 @@ void DoubleCrawlAnim(Animation *self, SubStrip *strip, float t)
 }
 StripAnimation doubleCrawlAnim(DoubleCrawlAnim, &allstrips, 2.0, true);
 
+void BreatheAnim(Animation *self, SubStrip *strip, float t)
+{
+    for(int i = 0; i < strip->numPixels(); i++)
+    {
+        strip->set(i, mainColor * gammaf(curve(t)) + secondaryColor * gammaf(curve(t+0.5)));
+    }
+}
+StripAnimation breatheAnim(BreatheAnim, &allstrips, 2.0, true);
+
+
+std::array<StripAnimation*, 2> animations = {&doubleCrawlAnim, &breatheAnim};
+
 ////// Communication things
 
 #define kDescriptorUserDesc "2901"
@@ -170,7 +182,10 @@ CRGB rgbFromString(const String &str)
 BLEService shinerService("6c0de004-629d-4717-bed5-847fddfbdc2e");
 
 StoredProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5", "0.0,100.0", [](const String &newValue) {
-    doubleCrawlAnim.duration = newValue.toFloat();
+    for(const auto& anim: animations)
+    {
+        anim->duration = newValue.toFloat();
+    }
 });
 StoredProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color1", "255 100 0", "0 0 0,255 255 255", [](const String &newValue) {
     mainColor = rgbFromString(newValue);
@@ -299,6 +314,9 @@ void setMode(RunMode newMode)
         FastLED.setBrightness(0);
     } else {
         FastLED.setBrightness(brightnessProp.get().toInt());
+
+        ansys.removeAnimation(0);
+        ansys.addAnimation(animations[(int)runMode-1]);
     }
 }
 
@@ -306,7 +324,7 @@ void update()
 {
     if(M5.BtnA.wasPressed())
     {
-        RunMode newMode = (RunMode)((runMode + 1) % RunModeCount);
+        RunMode newMode = (RunMode)((runMode + 1) % (animations.size()+1));
         String modeStr = String((int)newMode);
         modeProp.set(modeStr);
     }
