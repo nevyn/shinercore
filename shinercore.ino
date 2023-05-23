@@ -87,7 +87,7 @@ StripAnimation breatheAnim(BreatheAnim, &allstrips, 2.0, true);
 void FireAnim(Animation *self, SubStrip *strip, float t)
 {
     // does not work well with 400...
-    static const int numPixels = 50;
+    static const int numPixels = 100;
 
     // COOLING: How much does the air cool as it rises?
     // Less cooling = taller flames.  More cooling = shorter flames.
