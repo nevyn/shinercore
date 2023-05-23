@@ -5,6 +5,20 @@
 #include <ArduinoBLE.h>
 #include <Preferences.h>
 
+class Logger : public Print
+{
+    virtual size_t write(uint8_t c)
+    {
+        Serial.write(c);
+        if(M5.getDisplayCount() > 0)
+        {
+            M5GFX &display = M5.getDisplay(0);
+            return display.write(c);
+        }
+    }
+};
+Logger logger;
+
 ////// Animation things
 
 enum RunMode
@@ -192,7 +206,7 @@ public:
         value = prefs.getString(key, value);
         chara.writeValue(value);
         applicator(value);
-        Serial.print(key); Serial.print(" loaded initial value "); Serial.println(value);
+        logger.print(key); logger.print(" := "); logger.println(value);
     }
 protected:
     void save()
@@ -204,10 +218,10 @@ protected:
         }
         else if(prefs.putString(key, value) == 0)
         {
-            Serial.println("failed to store preferences!");
+            logger.println("failed to store preferences!");
             while (1);
         }
-        Serial.print(key); Serial.print(" saved new value "); Serial.println(value);
+        logger.print(key); logger.print(" = "); logger.println(value);
     }
 protected:
     BLEStringCharacteristic chara;
@@ -265,17 +279,19 @@ StoredProperty nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", "unknown
 
 std::array<StoredProperty*, 8> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp, &nameProp};
 
+std::vector<BLEDevice> connectedCores;
+std::vector<BLEDevice> failedCores;
 
-void commsSetup()
+void commsSetup(void)
 {
     if (!prefs.begin("shinercore"))
     {
-        Serial.println("failed to read preferences!");
+        logger.println("failed to read preferences!");
         while (1);
     }
 
     if (!BLE.begin()) {
-        Serial.println("starting Bluetooth® Low Energy module failed!");
+        logger.println("starting Bluetooth® Low Energy module failed!");
         while (1);
     }
 
@@ -292,9 +308,12 @@ void commsSetup()
     BLE.setAdvertisedService(shinerService);
     BLE.addService(shinerService);
     BLE.advertise();
+
+    // scan for other shinercores
+    BLE.scanForUuid(shinerService.uuid());
 }
 
-void commsUpdate()
+void commsUpdate(void)
 {
     BLE.poll();
 
@@ -302,6 +321,33 @@ void commsUpdate()
     {
         prop->poll();
     }
+
+    BLEDevice otherCore = BLE.available();
+    if(otherCore && std::find(failedCores.begin(), failedCores.end(), otherCore) == failedCores.end())
+    {
+        logger.printf("Connecting to %s...\n", otherCore.localName().c_str());
+        if(otherCore.connect())
+        {
+            logger.printf("Connected!\n");
+            connectedCores.push_back(otherCore);
+        } else {
+            logger.printf("Failed to connect :'(\n");
+            failedCores.push_back(otherCore);
+        }
+    }
+
+}
+
+///// Display things
+void displaySetup(M5GFX &display)
+{
+    display.setTextScroll(true);
+}
+
+void displayUpdate(M5GFX &display)
+{
+    //display.clear(TFT_BLACK);
+    //display.drawString("Hello world", 0, 0);
 }
 
 
@@ -323,7 +369,7 @@ void commsUpdate()
     #error undefined hardware
 #endif
 
-void setup() {
+void setup(void) {
     M5.begin();
     Serial.begin(115200);
     FastLED.addLeds<WS2811, GROVE1_PIN, GRB>(lstrip, lstrip_count);
@@ -335,10 +381,15 @@ void setup() {
     ansys.addAnimation(&doubleCrawlAnim);
 
     commsSetup();
+
+    if(M5.getDisplayCount() > 0)
+    {
+        displaySetup(M5.getDisplay(0));
+    }
 }
 
 unsigned long lastMillis;
-void loop() {
+void loop(void) {
     M5.update();
 
     unsigned long now = millis();
@@ -354,13 +405,18 @@ void loop() {
 
     ansys.playElapsedTime(delta);
     FastLED.show();
+
+    if(M5.getDisplayCount() > 0)
+    {
+        displayUpdate(M5.getDisplay(0));
+    }
 }
 
 void setMode(RunMode newMode)
 {
     runMode = newMode;
-    Serial.print("New mode: ");
-    Serial.println(runMode);
+    logger.print("New mode: ");
+    logger.println(runMode);
     buttonled.fill(runMode==0 ? CRGB::Black : runMode==1 ? mainColor : secondaryColor);
 
     if(runMode == Off) {
@@ -373,7 +429,7 @@ void setMode(RunMode newMode)
     }
 }
 
-void update()
+void update(void)
 {
     if(M5.BtnA.wasPressed())
     {
