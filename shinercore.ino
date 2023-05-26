@@ -27,7 +27,7 @@ enum RunMode
     DoubleCrawl = 1,
 
     RunModeCount
-} runMode;
+};
 
 static const int lstrip_count = 400;
 CRGB lstrip[lstrip_count];
@@ -40,13 +40,16 @@ ProxyStrip allstrips({&left, &right});
 CRGB btnled[1];
 SubStrip buttonled(btnled, 1);
 
-CRGB mainColor(255, 100, 0);
-CRGB secondaryColor(240, 255, 0);
-static const int palette_count = 2;
-CRGB* palette[] = {&mainColor, &secondaryColor};
+struct ShinySettings {
+    CRGB mainColor(255, 100, 0);
+    CRGB secondaryColor(240, 255, 0);
+    RunMode mode;
+    float speed = 2.0;
+    float p_tau = 10.0;
+    float p_phi = 4.0;
+};
 
-float p_tau = 10.0;
-float p_phi = 4.0;
+ShinySettings mySettings;
 
 String ownerName = "unknown";
 
