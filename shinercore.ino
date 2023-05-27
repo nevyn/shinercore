@@ -49,22 +49,23 @@ struct ShinySettings {
     float p_phi = 4.0;
 };
 
-ShinySettings mySettings;
+ShinySettings localPrefs;
 
 String ownerName = "unknown";
 
 AnimationSystem ansys;
 
-typedef void(*StripFunc)(Animation*, SubStrip *strip, float);
+typedef void(*StripFunc)(Animation*, SubStrip *strip, ShinySettings *prefs, float);
 class StripAnimation : public Animation
 {
 public:
     StripFunc func;
     SubStrip *strip;
+    ShinySettings *prefs;
     StripAnimation(StripFunc func, SubStrip *strip, TimeInterval duration = 1.0, bool repeats = false) 
       : Animation(duration, repeats), func(func), strip(strip) {}
 protected:
-    void animate(float absoluteTime) { func(this, strip, absoluteTime); }
+    void animate(float absoluteTime) { func(this, strip, prefs, absoluteTime); }
 };
 
 float frand(void)
@@ -80,28 +81,28 @@ float curve(float progress)
 }
 
 // Animation that crawls two sine waves against each other
-void DoubleCrawlAnim(Animation *self, SubStrip *strip, float t)
+void DoubleCrawlAnim(Animation *self, SubStrip *strip, ShinySettings *prefs, float t)
 {
     for(int i = 0; i < strip->numPixels(); i++)
     {
-        strip->set(i, mainColor * (gammaf(curve(t - i/p_tau))/2.0f) + secondaryColor * (gammaf(curve(t + i/p_phi))/2.0f));
+        strip->set(i, prefs->mainColor * (gammaf(curve(t - i/prefs->p_tau))/2.0f) + prefs->secondaryColor * (gammaf(curve(t + i/prefs->p_phi))/2.0f));
     }
 }
 StripAnimation doubleCrawlAnim(DoubleCrawlAnim, &allstrips, 2.0, true);
 
 // simple fade between two colors
-void BreatheAnim(Animation *self, SubStrip *strip, float t)
+void BreatheAnim(Animation *self, SubStrip *strip, ShinySettings *prefs, float t)
 {
     for(int i = 0; i < strip->numPixels(); i++)
     {
-        strip->set(i, mainColor * gammaf(curve(t)) + secondaryColor * gammaf(curve(t+0.5)));
+        strip->set(i, prefs->mainColor * gammaf(curve(t)) + prefs->secondaryColor * gammaf(curve(t+0.5)));
     }
 }
 StripAnimation breatheAnim(BreatheAnim, &allstrips, 2.0, true);
 
 // Port of Fire2012 by Mark Kriegsman
 // Adapted from https://github.com/bportaluri/ALA/blob/master/src/AlaLedRgb.cpp#L649 :) 
-void FireAnim(Animation *self, SubStrip *strip, float t)
+void FireAnim(Animation *self, SubStrip *strip, ShinySettings *prefs, float t)
 {
     // does not work well with 400...
     static const int numPixels = 100;
@@ -142,7 +143,7 @@ void FireAnim(Animation *self, SubStrip *strip, float t)
     // Step 4.  Map from heat cells to LED colors
     for(int j=0; j<numPixels; j++)
     {
-        CRGB color = mainColor.lerp8(secondaryColor, heat[j]);
+        CRGB color = prefs->mainColor.lerp8(prefs->secondaryColor, heat[j]);
         strip->set(j, color);
     }
 }
@@ -263,11 +264,11 @@ StoredProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5",
     }
 });
 StoredProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color1", "255 100 0", "0 0 0,255 255 255", [](const String &newValue) {
-    mainColor = rgbFromString(newValue);
-    if (runMode == 1) buttonled.fill(mainColor);
+    localPrefs.mainColor = rgbFromString(newValue);
+    if (localPrefs.mode == 1) buttonled.fill(localPrefs.mainColor);
 });
 StoredProperty color2Prop("83595a76-1b17-4158-bcee-e702c3165caf", "color2", "240 255 0", "0 0 0,255 255 255", [](const String &newValue) {
-    secondaryColor = rgbFromString(newValue);
+    localPrefs.secondaryColor = rgbFromString(newValue);
 });
 StoredProperty modeProp("70d4cabe-82cc-470a-a572-95c23f1316ff", "mode", "1", "0,1", [](const String &newValue) {
     setMode((RunMode)newValue.toInt());
@@ -276,10 +277,10 @@ StoredProperty brightnessProp("2B01", "brightness", "255", "0-255", [](const Str
     FastLED.setBrightness(newValue.toInt());
 });
 StoredProperty tauProp("d879c81a-09f0-4a24-a66c-cebf358bb97a", "tau", "10.0", "-100.0,100.0", [](const String &newValue) {
-    p_tau = newValue.toFloat();
+    localPrefs.p_tau = newValue.toFloat();
 });
 StoredProperty phiProp("df6f0905-09bd-4bf6-b6f5-45b5a4d20d52", "phi", "4.0", "-100.0,100.0", [](const String &newValue) {
-    p_phi = newValue.toFloat();
+    localPrefs.p_phi = newValue.toFloat();
 });
 StoredProperty nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", "unknown", "", [](const String &newValue) {
     ownerName = newValue;
@@ -453,10 +454,10 @@ void loop(void) {
 
 void setMode(RunMode newMode)
 {
-    runMode = newMode;
+    localPrefs.mode = newMode;
     logger.print("New mode: ");
-    logger.println(runMode);
-    buttonled.fill(runMode==0 ? CRGB::Black : runMode==1 ? mainColor : secondaryColor);
+    logger.println(localPrefs.mode);
+    buttonled.fill(localPrefs.mode==0 ? CRGB::Black : runMode==1 ? localPrefs.mainColor : localPrefs.secondaryColor);
 
     if(runMode == Off) {
         FastLED.setBrightness(0);
@@ -464,7 +465,10 @@ void setMode(RunMode newMode)
         FastLED.setBrightness(brightnessProp.get().toInt());
 
         ansys.removeAnimation(0);
-        ansys.addAnimation(animations[(int)runMode-1]);
+        StripAnimation *anim = animations[(int)localPrefs.mode-1];
+        anim->prefs = &localPrefs;
+        anim->duration = anim->prefs->speed;
+        ansys.addAnimation(anim);
     }
 }
 
@@ -472,7 +476,7 @@ void update(void)
 {
     if(M5.BtnA.wasPressed())
     {
-        RunMode newMode = (RunMode)((runMode + 1) % (animations.size()+1));
+        RunMode newMode = (RunMode)((localPrefs.mode + 1) % (animations.size()+1));
         String modeStr = String((int)newMode);
         modeProp.set(modeStr);
     }
