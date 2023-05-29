@@ -41,8 +41,8 @@ CRGB btnled[1];
 SubStrip buttonled(btnled, 1);
 
 struct ShinySettings {
-    CRGB mainColor(255, 100, 0);
-    CRGB secondaryColor(240, 255, 0);
+    CRGB mainColor = CRGB(255, 100, 0);
+    CRGB secondaryColor = CRGB(240, 255, 0);
     RunMode mode;
     float speed = 2.0;
     float p_tau = 10.0;
@@ -258,9 +258,10 @@ CRGB rgbFromString(const String &str)
 BLEService shinerService("6c0de004-629d-4717-bed5-847fddfbdc2e");
 
 StoredProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5", "0.0,100.0", [](const String &newValue) {
+    localPrefs.speed = newValue.toFloat();
     for(const auto& anim: animations)
     {
-        anim->duration = newValue.toFloat();
+        anim->duration = localPrefs.speed;
     }
 });
 StoredProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color1", "255 100 0", "0 0 0,255 255 255", [](const String &newValue) {
@@ -457,9 +458,9 @@ void setMode(RunMode newMode)
     localPrefs.mode = newMode;
     logger.print("New mode: ");
     logger.println(localPrefs.mode);
-    buttonled.fill(localPrefs.mode==0 ? CRGB::Black : runMode==1 ? localPrefs.mainColor : localPrefs.secondaryColor);
+    buttonled.fill(localPrefs.mode==0 ? CRGB::Black : localPrefs.mode==1 ? localPrefs.mainColor : localPrefs.secondaryColor);
 
-    if(runMode == Off) {
+    if(localPrefs.mode == Off) {
         FastLED.setBrightness(0);
     } else {
         FastLED.setBrightness(brightnessProp.get().toInt());
