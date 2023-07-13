@@ -39,10 +39,13 @@ class RemoteCore
 public:
     BLEDevice device;
     BLECharacteristic colorProp;
+    ShinySettings prefs;
     bool connected;
     bool failed;
 };
 std::vector<RemoteCore*> remoteCores;
+
+bool doAdvertise = true;
 
 void commsSetup(void)
 {
@@ -67,10 +70,15 @@ void commsSetup(void)
     BLE.setDeviceName(name.c_str());
     BLE.setLocalName(name.c_str());
     
-    BLE.setAdvertisedService(shinerService);
-    BLE.addService(shinerService);
-    if (BLE.advertise()) {
-        logger.println("Advertising...");
+    if (doAdvertise)
+    {
+        BLE.setAdvertisedService(shinerService);
+        BLE.addService(shinerService);
+        if (BLE.advertise()) {
+            logger.println("Advertising local shiner service");
+        } else {
+            logger.println("Failed to advertise");
+        }
     }
 
     // scan for other shinercores
@@ -98,6 +106,12 @@ void commsUpdate(void)
         {
             logger.printf("Connected!\n");
             connectedCores.push_back(otherCore);
+
+            if(otherCore.discoverService(shinerService.uuid())) {
+                logger.printf("Discovered shiner service\n");
+            } else {
+                logger.printf("Failed to discover shiner service\n");
+            }
 
             BLECharacteristic mainColor = otherCore.characteristic(colorProp.uuid());
             if(mainColor)
