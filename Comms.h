@@ -147,4 +147,17 @@ void commsUpdate(void)
         // all done connecting, keep scanning
         BLE.scanForUuid(shinerService.uuid());
     }
+
+    for(auto it = remoteCores.begin(); it != remoteCores.end(); ++it)
+    {
+        RemoteCore *remoteCore = *it;
+        if(!remoteCore->connected) continue;
+        
+        remoteCore->device.poll();
+        if(!remoteCore->device.connected())
+        {
+            logger.printf("Lost connection to %s.\n", remoteCore->device.localName().c_str());
+            it = remoteCores.erase(it);
+        }
+    }
 }
