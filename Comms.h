@@ -31,14 +31,16 @@ StoredProperty nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", "unknown
 });
 std::array<StoredProperty*, 8> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp, &nameProp};
 
-std::vector<BLEDevice> connectedCores;
-std::vector<BLEDevice> failedCores;
-
 class RemoteCore
 {
 public:
+    RemoteCore(BLEDevice device) :
+        device(device),
+        connected(false),
+        failed(false)
+    {}
+
     BLEDevice device;
-    BLECharacteristic colorProp;
     ShinySettings prefs;
     bool connected;
     bool failed;
@@ -85,6 +87,42 @@ void commsSetup(void)
     BLE.scanForUuid(shinerService.uuid());
 }
 
+void remoteCoreConnected(BLEDevice foundDevice)
+{
+    RemoteCore *remoteCore = new RemoteCore(foundDevice);
+    remoteCores.push_back(remoteCore);
+
+    logger.printf("Connecting to %s...\n", remoteCore->device.localName().c_str());
+    if(!remoteCore->device.connect())
+    {
+        remoteCore->failed = true;
+        logger.printf("Failed to connect :'(\n");
+        return;
+    }
+    remoteCore->connected = true;
+
+    logger.printf("Connected!\n");
+
+    if(!remoteCore->device.discoverService(shinerService.uuid()))
+    {
+        logger.printf("Failed to discover shiner service\n");
+        remoteCore->failed = true;
+        remoteCore->connected = false;
+        return;
+    }
+
+    BLECharacteristic mainColor = remoteCore->device.characteristic(colorProp.uuid());
+    if(mainColor)
+    {
+        char colorStr[255];
+        // see also: characteristic.valueUpdated()
+        mainColor.readValue(colorStr, 255);
+        logger.printf("That core has primary color %s\n", colorStr);
+    } else {
+        logger.printf("Booo, can't read its color prop :(\n");
+    }
+}
+
 void commsUpdate(void)
 {
     BLE.poll();
@@ -94,40 +132,17 @@ void commsUpdate(void)
         prop->poll();
     }
 
-    // TODO: convert this to not-spaghetti and use RemoteCore to properly interrogate and track state
-    BLEDevice otherCore = BLE.available();
-    if(otherCore && std::find(failedCores.begin(), failedCores.end(), otherCore) == failedCores.end())
+    BLEDevice foundDevice = BLE.available();
+    auto containsFoundDevice = [foundDevice](RemoteCore *icore) {
+        return icore->device == foundDevice;
+    };
+    if(foundDevice && std::find_if(remoteCores.begin(), remoteCores.end(), containsFoundDevice) == remoteCores.end())
     {
         // can't connect while scanning
         BLE.stopScan();
 
-        logger.printf("Connecting to %s...\n", otherCore.localName().c_str());
-        if(otherCore.connect())
-        {
-            logger.printf("Connected!\n");
-            connectedCores.push_back(otherCore);
-
-            if(otherCore.discoverService(shinerService.uuid())) {
-                logger.printf("Discovered shiner service\n");
-            } else {
-                logger.printf("Failed to discover shiner service\n");
-            }
-
-            BLECharacteristic mainColor = otherCore.characteristic(colorProp.uuid());
-            if(mainColor)
-            {
-                char colorStr[255];
-                // see also: characteristic.valueUpdated()
-                mainColor.readValue(colorStr, 255);
-                logger.printf("That core has primary color %s\n", colorStr);
-            } else {
-                logger.printf("Booo, can't read its color prop :(\n");
-            }
-
-        } else {
-            logger.printf("Failed to connect :'(\n");
-            failedCores.push_back(otherCore);
-        }
+        // Query and insert into local state
+        remoteCoreConnected(foundDevice);
 
         // all done connecting, keep scanning
         BLE.scanForUuid(shinerService.uuid());
