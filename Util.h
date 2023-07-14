@@ -2,14 +2,13 @@ class Logger : public Print
 {
     virtual size_t write(uint8_t c)
     {
-        Serial.write(c);
-        Serial.flush();
+        size_t written = Serial.write(c);
         if(M5.getDisplayCount() > 0)
         {
             M5GFX &display = M5.getDisplay(0);
             return display.write(c);
         }
-        return 1;
+        return written;
     }
 };
 Logger logger;
