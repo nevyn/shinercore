@@ -37,13 +37,72 @@ public:
     RemoteCore(BLEDevice device) :
         device(device),
         connected(false),
-        failed(false)
+        failed(false),
+        retryDuration(1),
+        untilNextRetry(0)
     {}
 
     BLEDevice device;
     ShinySettings prefs;
     bool connected;
     bool failed;
+    TimeInterval untilNextRetry;
+    TimeInterval retryDuration;
+
+    void fail()
+    {
+        untilNextRetry = retryDuration;
+        retryDuration = std::min(retryDuration*2, 60.0);
+        logger.printf("Retrying in %.2f...\n", untilNextRetry);
+        failed = true;
+        connected = false;
+        if(device && device.connected())
+        {
+            device.disconnect();
+        }
+    }
+
+    void elapseDelta(TimeInterval delta)
+    {
+        untilNextRetry -= delta;
+        if(untilNextRetry <= 0)
+        {
+            logger.printf("Retrying!\n");
+            connect();
+        }
+    }
+
+    void connect()
+    {
+        logger.printf("Connecting to %s...\n", this->device.localName().c_str());
+        if(!this->device.connect())
+        {
+            this->fail();
+            logger.printf("Failed to connect :'(\n");
+            return;
+        }
+        this->connected = true;
+    
+        logger.printf("Connected!\n");
+    
+        if(!this->device.discoverService(shinerService.uuid()))
+        {
+            logger.printf("Failed to discover shiner service\n");
+            this->fail();
+            return;
+        }
+    
+        BLECharacteristic mainColor = this->device.characteristic(colorProp.uuid());
+        if(mainColor)
+        {
+            char colorStr[255];
+            // see also: characteristic.valueUpdated()
+            mainColor.readValue(colorStr, 255);
+            logger.printf("That core has primary color %s\n", colorStr);
+        } else {
+            logger.printf("Booo, can't read its color prop :(\n");
+        }
+    }
 };
 std::vector<RemoteCore*> remoteCores;
 
@@ -87,43 +146,15 @@ void commsSetup(void)
     BLE.scanForUuid(shinerService.uuid());
 }
 
-void remoteCoreConnected(BLEDevice foundDevice)
+void remoteCoreFound(BLEDevice foundDevice)
 {
     RemoteCore *remoteCore = new RemoteCore(foundDevice);
     remoteCores.push_back(remoteCore);
 
-    logger.printf("Connecting to %s...\n", remoteCore->device.localName().c_str());
-    if(!remoteCore->device.connect())
-    {
-        remoteCore->failed = true;
-        logger.printf("Failed to connect :'(\n");
-        return;
-    }
-    remoteCore->connected = true;
-
-    logger.printf("Connected!\n");
-
-    if(!remoteCore->device.discoverService(shinerService.uuid()))
-    {
-        logger.printf("Failed to discover shiner service\n");
-        remoteCore->failed = true;
-        remoteCore->connected = false;
-        return;
-    }
-
-    BLECharacteristic mainColor = remoteCore->device.characteristic(colorProp.uuid());
-    if(mainColor)
-    {
-        char colorStr[255];
-        // see also: characteristic.valueUpdated()
-        mainColor.readValue(colorStr, 255);
-        logger.printf("That core has primary color %s\n", colorStr);
-    } else {
-        logger.printf("Booo, can't read its color prop :(\n");
-    }
+    remoteCore->connect();
 }
 
-void commsUpdate(void)
+void commsUpdate(TimeInterval delta)
 {
     BLE.poll();
 
@@ -142,7 +173,7 @@ void commsUpdate(void)
         BLE.stopScan();
 
         // Query and insert into local state
-        remoteCoreConnected(foundDevice);
+        remoteCoreFound(foundDevice);
 
         // all done connecting, keep scanning
         BLE.scanForUuid(shinerService.uuid());
@@ -151,13 +182,18 @@ void commsUpdate(void)
     for(auto it = remoteCores.begin(); it != remoteCores.end(); ++it)
     {
         RemoteCore *remoteCore = *it;
-        if(!remoteCore->connected) continue;
-        
-        remoteCore->device.poll();
-        if(!remoteCore->device.connected())
+        if(remoteCore->connected)
         {
-            logger.printf("Lost connection to %s.\n", remoteCore->device.localName().c_str());
-            it = remoteCores.erase(it);
+            remoteCore->device.poll();
+            if(!remoteCore->device.connected())
+            {
+                logger.printf("Lost connection to %s.\n", remoteCore->device.localName().c_str());
+                it = remoteCores.erase(it);
+            }
+        }
+        else
+        {
+            remoteCore->elapseDelta(delta);
         }
     }
 }

@@ -115,7 +115,7 @@ void loop(void) {
     TimeInterval delta = diff/1000.0;
     
     update();
-    commsUpdate();
+    commsUpdate(delta);
 
     ansys.playElapsedTime(delta);
     FastLED.show();
