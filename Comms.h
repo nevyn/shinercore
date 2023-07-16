@@ -107,6 +107,7 @@ public:
 std::vector<RemoteCore*> remoteCores;
 
 bool doAdvertise = true;
+bool doFindRemoteCores = false;
 
 void commsSetup(void)
 {
@@ -143,7 +144,10 @@ void commsSetup(void)
     }
 
     // scan for other shinercores
-    BLE.scanForUuid(shinerService.uuid());
+    if (doFindRemoteCores)
+    {
+        BLE.scanForUuid(shinerService.uuid());
+    }
 }
 
 void remoteCoreFound(BLEDevice foundDevice)
@@ -163,20 +167,23 @@ void commsUpdate(TimeInterval delta)
         prop->poll();
     }
 
-    BLEDevice foundDevice = BLE.available();
-    auto containsFoundDevice = [foundDevice](RemoteCore *icore) {
-        return icore->device == foundDevice;
-    };
-    if(foundDevice && std::find_if(remoteCores.begin(), remoteCores.end(), containsFoundDevice) == remoteCores.end())
+    if (doFindRemoteCores)
     {
-        // can't connect while scanning
-        BLE.stopScan();
-
-        // Query and insert into local state
-        remoteCoreFound(foundDevice);
-
-        // all done connecting, keep scanning
-        BLE.scanForUuid(shinerService.uuid());
+        BLEDevice foundDevice = BLE.available();
+        auto containsFoundDevice = [foundDevice](RemoteCore *icore) {
+            return icore->device == foundDevice;
+        };
+        if(foundDevice && std::find_if(remoteCores.begin(), remoteCores.end(), containsFoundDevice) == remoteCores.end())
+        {
+            // can't connect while scanning
+            BLE.stopScan();
+    
+            // Query and insert into local state
+            remoteCoreFound(foundDevice);
+    
+            // all done connecting, keep scanning
+            BLE.scanForUuid(shinerService.uuid());
+        }
     }
 
     for(auto it = remoteCores.begin(); it != remoteCores.end(); ++it)
