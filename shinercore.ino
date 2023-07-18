@@ -136,8 +136,6 @@ void loop(void) {
 void setMode(RunMode newMode)
 {
     localPrefs.mode = newMode;
-    logger.print("New mode: ");
-    logger.println(localPrefs.mode);
     buttonled.fill(localPrefs.mode==0 ? CRGB::Black : localPrefs.mode==1 ? localPrefs.mainColor : localPrefs.secondaryColor);
 
     if(localPrefs.mode == Off) {
