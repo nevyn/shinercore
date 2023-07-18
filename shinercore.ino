@@ -86,6 +86,13 @@ void displayUpdate(M5GFX &display)
 void setup(void) {
     M5.begin();
     Serial.begin(115200);
+
+    M5.update();
+    if(M5.BtnA.isHolding()) {
+        logger.println("CLEARING SETTINGS DUE TO BUTTON HELD\n");
+        prefs.clear();   
+    }
+
     FastLED.addLeds<WS2811, GROVE1_PIN, GRB>(lstrip, lstrip_count);
     FastLED.addLeds<WS2811, GROVE2_PIN, GRB>(rstrip, rstrip_count);
     FastLED.addLeds<WS2811, NEO_PIN, GRB>(btnled, 1);
