@@ -99,8 +99,6 @@ void setup(void) {
     allstrips.fill(CRGB::Black);
     FastLED.show();
 
-    ansys.addAnimation(&doubleCrawlAnim);
-
     commsSetup();
 
     if(M5.getDisplayCount() > 0)
