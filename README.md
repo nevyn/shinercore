@@ -1,8 +1,17 @@
 # Shinercore
 
-syncs colors over bluetooth so everybody looks cool
+ShinerCore is an open source firmware/Arduino sketch for ESP32 controllers
+to make pretty animations on addressable RGB LED strips (such as NeoPixel strips).
+It's hard-coded to work well with M5Stack's M5AtomS3 modules, which are very small
+and cheap and work really great for the use case, but it shouldn't be too much of
+a pain to port it to another ESP32 platform.
 
-use LightBlue or smth to configure your own personal pattern
+The current feature set includes the ability to configure the animations over
+Bluetooth with [an iOS app](https://github.com/nevyn/ShinerCoreRemote). The goal
+is to at beat syncing (having the animations blink to the beat of nearby music
+using a microphone peripheral); and to create a mesh network over bluetooth
+to sync animations with your friends, so you all pulse in time and with each
+others' colors.
 
 ## todo
 
