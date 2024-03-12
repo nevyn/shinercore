@@ -13,6 +13,17 @@ using a microphone peripheral); and to create a mesh network over bluetooth
 to sync animations with your friends, so you all pulse in time and with each
 others' colors.
 
+## Setup
+
+Since it only runs on the M5Atom and M5AtomS3, you'll need to get one of those
+and [configure Arduino IDE for it](https://docs.m5stack.com/en/arduino/arduino_development).
+
+Install the following libraries from the Arduino library manager:
+* M5Unified
+* FastLED
+* ArduinoBLE
+* [OverAnimate](https://github.com/nevyn/OverAnimate) isn't available from the library manager, so you'll need to manually clone it to your Arduino libraries folder
+
 ## todo
 
 - [ ] connect to every other shinercore in range
