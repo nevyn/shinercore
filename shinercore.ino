@@ -5,6 +5,7 @@
 #include <ArduinoBLE.h>
 #include <Preferences.h>
 #include "Util.h"
+#include "BeatDetector.h"
 
 
 enum RunMode
@@ -30,6 +31,7 @@ ShinySettings localPrefs;
 String ownerName = "unknown";
 AnimationSystem ansys;
 Preferences prefs;
+BeatDetector beats;
 
 
 ////// Animation things
@@ -71,7 +73,7 @@ void displayUpdate(M5GFX &display)
     #define GROVE1_PIN 1
     #define GROVE2_PIN 2
     #define NEO_PIN 35
-#elif defined(ARDUINO_M5STACK_ATOM) || defined(ARDUINO_M5Stack_ATOM)
+#elif defined(ARDUINO_M5STACK_ATOM) || defined(ARDUINO_M5Stack_ATOM) || defined(ARDUINO_M5STACK_ATOM_ECHO)
     #define GROVE1_PIN 26
     #define GROVE2_PIN 32
     #define NEO_PIN 27
@@ -105,6 +107,8 @@ void setup(void) {
     {
         displaySetup(M5.getDisplay(0));
     }
+
+    beats.setup();
 }
 
 unsigned long lastMillis;
