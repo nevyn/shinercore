@@ -11,19 +11,29 @@
 enum RunMode
 {
     Off = 0,
-    DoubleCrawl = 1,
+    On = 1,
 
     RunModeCount
 };
 void setMode(RunMode newMode);
 
-struct ShinySettings {
+#define LAYER_COUNT 10
+
+enum ShinyLayer
+{
     CRGB mainColor = CRGB(255, 100, 0);
     CRGB secondaryColor = CRGB(240, 255, 0);
-    RunMode mode;
     float speed = 2.0;
     float p_tau = 10.0;
     float p_phi = 4.0;
+    int animationIndex = 0;
+}
+
+struct ShinySettings
+{
+    RunMode mode;
+    ShinyLayer layers[LAYER_COUNT];
+    int currentLayer;
 };
 
 ////// Main state
@@ -32,6 +42,8 @@ String ownerName = "unknown";
 AnimationSystem ansys;
 Preferences prefs;
 BeatDetector beats;
+StripAnimation animations[LAYER_COUNT];
+
 
 
 ////// Animation things
@@ -138,18 +150,12 @@ void loop(void) {
 void setMode(RunMode newMode)
 {
     localPrefs.mode = newMode;
-    buttonled.fill(localPrefs.mode==0 ? CRGB::Black : localPrefs.mode==1 ? localPrefs.mainColor : localPrefs.secondaryColor);
+    buttonled.fill(localPrefs.mode==Off ? CRGB::Black :  localPrefs.layers[0].mainColor);
 
     if(localPrefs.mode == Off) {
         FastLED.setBrightness(0);
     } else {
         FastLED.setBrightness(brightnessProp.get().toInt());
-
-        ansys.removeAnimation(0);
-        StripAnimation *anim = animations[(int)localPrefs.mode-1];
-        anim->prefs = &localPrefs;
-        anim->duration = anim->prefs->speed;
-        ansys.addAnimation(anim);
     }
 }
 
@@ -157,7 +163,7 @@ void update(void)
 {
     if(M5.BtnA.wasPressed())
     {
-        RunMode newMode = (RunMode)((localPrefs.mode + 1) % (animations.size()+1));
+        RunMode newMode = (RunMode)(!localPrefs.mode);
         String modeStr = String((int)newMode);
         modeProp.set(modeStr);
     }
