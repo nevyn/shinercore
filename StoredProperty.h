@@ -78,7 +78,7 @@ protected:
     }
 protected:
     BLEStringCharacteristic chara;
-    const char *key;
+    String key;
     String value;
     const String defaultValue;
     std::function<void(const String&)> applicator;
@@ -86,4 +86,9 @@ protected:
     BLEDescriptor nameDescriptor;
     BLEDescriptor formatDescriptor;
     BLEDescriptor rangeDescriptor;
+};
+
+class StoredMultiProperty : public StoredProperty
+{
+
 };

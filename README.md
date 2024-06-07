@@ -18,7 +18,8 @@ others' colors.
 Since it only runs on the M5Atom and M5AtomS3, you'll need to get one of those
 and [configure Arduino IDE for it](https://docs.m5stack.com/en/arduino/arduino_development).
 
-Install the following libraries from the Arduino library manager:
+Install the following libraries from
+ the Arduino library manager:
 * M5Unified
 * FastLED
 * ArduinoBLE

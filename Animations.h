@@ -1,12 +1,14 @@
-// Animation that crawls two sine waves against each other
-void DoubleCrawlAnim(Animation *self, SubStrip *strip, ShinySettings *prefs, float t)
+void NothingAnim(Animation *self, SubStrip *strip, ShinySettings *prefs, float t)
+{
+}
+
+void OpposingWavesAnim(Animation *self, SubStrip *strip, ShinySettings *prefs, float t)
 {
     for(int i = 0; i < strip->numPixels(); i++)
     {
         strip->set(i, prefs->mainColor * (gammaf(curve(t - i/prefs->p_tau))/2.0f) + prefs->secondaryColor * (gammaf(curve(t + i/prefs->p_phi))/2.0f));
     }
 }
-StripAnimation doubleCrawlAnim(DoubleCrawlAnim, &allstrips, 2.0, true);
 
 // simple fade between two colors
 void BreatheAnim(Animation *self, SubStrip *strip, ShinySettings *prefs, float t)
@@ -16,7 +18,6 @@ void BreatheAnim(Animation *self, SubStrip *strip, ShinySettings *prefs, float t
         strip->set(i, prefs->mainColor * gammaf(curve(t)) + prefs->secondaryColor * gammaf(curve(t+0.5)));
     }
 }
-StripAnimation breatheAnim(BreatheAnim, &allstrips, 2.0, true);
 
 // Port of Fire2012 by Mark Kriegsman
 // Adapted from https://github.com/bportaluri/ALA/blob/master/src/AlaLedRgb.cpp#L649 :) 
@@ -65,7 +66,6 @@ void FireAnim(Animation *self, SubStrip *strip, ShinySettings *prefs, float t)
         strip->set(j, color);
     }
 }
-StripAnimation fireAnim(FireAnim, &allstrips, 2.0, true);
 
 
-std::array<StripAnimation*, 3> animations = {&doubleCrawlAnim, &breatheAnim, &fireAnim};
+std::array<StripFunc, 3> animationFuncs = {OpposingWavesAnim, BreatheAnim, FireAnim};
