@@ -77,7 +77,7 @@ void displayUpdate(M5GFX &display)
     #define GROVE1_PIN 26
     #define GROVE2_PIN 32
     #define NEO_PIN 27
-#elif defined(ARDUINO_M5Stick_C) || defined(ARDUINO_M5Stick_C_PLUS)
+#elif defined(ARDUINO_M5Stick_C) || defined(ARDUINO_M5Stick_C_PLUS) || defined(ARDUINO_M5STACK_STICKC_PLUS)
     #define GROVE1_PIN 32
     #define GROVE2_PIN 33
     #define NEO_PIN 26 // doesn't have one; this pin is just unused
