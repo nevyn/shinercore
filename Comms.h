@@ -10,31 +10,28 @@ StoredProperty brightnessProp("2B01", "brightness", "255", "0-255", [](const Str
 StoredProperty nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", "unknown", "", [](const String &newValue) {
     ownerName = newValue;
 });
-StoredProperty layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "name", "unknown", "", [](const String &newValue) {
+StoredProperty layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "layer", "unknown", "", [](const String &newValue) {
     // ...
 });
 
 // per-layer settings
 StoredMultiProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5", "0.0,100.0", [](const String &newValue) {
-    localPrefs.speed = newValue.toFloat();
-    for(const auto& anim: animations)
-    {
-        anim->duration = localPrefs.speed;
-    }
+    localPrefs.currentLayer()->speed = newValue.toFloat();
+    layerAnimations[localPrefs.currentLayerIndex].duration = newValue.toFloat();
 });
 StoredMultiProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color1", "255 100 0", "0 0 0,255 255 255", [](const String &newValue) {
-    localPrefs.mainColor = rgbFromString(newValue);
-    if (localPrefs.mode == 1) buttonled.fill(localPrefs.mainColor);
+    localPrefs.currentLayer()->mainColor = rgbFromString(newValue);
+    if (localPrefs.mode == 1) buttonled.fill(rgbFromString(newValue));
 });
 StoredMultiProperty color2Prop("83595a76-1b17-4158-bcee-e702c3165caf", "color2", "240 255 0", "0 0 0,255 255 255", [](const String &newValue) {
-    localPrefs.secondaryColor = rgbFromString(newValue);
+    localPrefs.currentLayer()->secondaryColor = rgbFromString(newValue);
 });
 
 StoredMultiProperty tauProp("d879c81a-09f0-4a24-a66c-cebf358bb97a", "tau", "10.0", "-100.0,100.0", [](const String &newValue) {
-    localPrefs.p_tau = newValue.toFloat();
+    localPrefs.currentLayer()->p_tau = newValue.toFloat();
 });
 StoredMultiProperty phiProp("df6f0905-09bd-4bf6-b6f5-45b5a4d20d52", "phi", "4.0", "-100.0,100.0", [](const String &newValue) {
-    localPrefs.p_phi = newValue.toFloat();
+    localPrefs.currentLayer()->p_phi = newValue.toFloat();
 });
 
 StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "name", "unknown", "", [](const String &newValue) {

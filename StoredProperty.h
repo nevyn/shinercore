@@ -56,7 +56,7 @@ public:
     }
     void load()
     {
-        value = prefs.getString(key, value);
+        value = prefs.getString(key.c_str(), value);
         chara.writeValue(value);
         applicator(value);
         logger.print(key); logger.print(" := "); logger.println(value);
@@ -66,10 +66,10 @@ protected:
     {
         if(value.isEmpty() || value.equals(" ") || value.equals(defaultValue))
         {
-            prefs.remove(key);
+            prefs.remove(key.c_str());
             value = defaultValue;
         }
-        else if(prefs.putString(key, value) == 0)
+        else if(prefs.putString(key.c_str(), value) == 0)
         {
             logger.println("failed to store preferences!");
             while (1);
@@ -90,5 +90,8 @@ protected:
 
 class StoredMultiProperty : public StoredProperty
 {
-
+public:
+    StoredMultiProperty(const char *uuid, const char *key, String defaultValue, const char *range, std::function<void(const String&)> applicator) :
+        StoredProperty(uuid, key, defaultValue, range, applicator)
+    {}
 };

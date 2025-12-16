@@ -6,35 +6,9 @@
 #include <Preferences.h>
 #include "Util.h"
 #include "BeatDetector.h"
-
-
-enum RunMode
-{
-    Off = 0,
-    On = 1,
-
-    RunModeCount
-};
-void setMode(RunMode newMode);
-
-#define LAYER_COUNT 10
-
-enum ShinyLayer
-{
-    CRGB mainColor = CRGB(255, 100, 0);
-    CRGB secondaryColor = CRGB(240, 255, 0);
-    float speed = 2.0;
-    float p_tau = 10.0;
-    float p_phi = 4.0;
-    int animationIndex = 0;
-}
-
-struct ShinySettings
-{
-    RunMode mode;
-    ShinyLayer layers[LAYER_COUNT];
-    int currentLayer;
-};
+#include "LayerAnimation.h"
+#include "Animations.h"
+#include "ShinyTypes.h"
 
 ////// Main state
 ShinySettings localPrefs;
@@ -42,7 +16,6 @@ String ownerName = "unknown";
 AnimationSystem ansys;
 Preferences prefs;
 BeatDetector beats;
-StripAnimation animations[LAYER_COUNT];
 
 
 
@@ -54,10 +27,23 @@ static const int rstrip_count = 400;
 CRGB rstrip[rstrip_count];
 SubStrip right(rstrip, rstrip_count);
 ProxyStrip allstrips({&left, &right});
+CRGB bbstrip[lstrip_count];
+SubStrip backbuffer(bbstrip, lstrip_count);
 CRGB btnled[1];
 SubStrip buttonled(btnled, 1);
-#include "StripAnimation.h"
-#include "Animations.h"
+
+LayerAnimation layerAnimations[LAYER_COUNT] = {
+    LayerAnimation(&backbuffer, &localPrefs.layers[0]),
+    LayerAnimation(&backbuffer, &localPrefs.layers[1]),
+    LayerAnimation(&backbuffer, &localPrefs.layers[2]),
+    LayerAnimation(&backbuffer, &localPrefs.layers[3]),
+    LayerAnimation(&backbuffer, &localPrefs.layers[4]),
+    LayerAnimation(&backbuffer, &localPrefs.layers[5]),
+    LayerAnimation(&backbuffer, &localPrefs.layers[6]),
+    LayerAnimation(&backbuffer, &localPrefs.layers[7]),
+    LayerAnimation(&backbuffer, &localPrefs.layers[8]),
+    LayerAnimation(&backbuffer, &localPrefs.layers[9]),
+};
 
 
 ////// Communication things
