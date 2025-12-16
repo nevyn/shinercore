@@ -29,11 +29,13 @@ struct ShinyLayerSettings
     int animationIndex = 0;
 };
 
+void setLayer(int newLayer);
+
 struct ShinySettings
 {
     RunMode mode;
     ShinyLayerSettings layers[LAYER_COUNT];
-    int currentLayerIndex;
+    int currentLayerIndex = 1;
     ShinyLayerSettings *currentLayer()
     {
         return &layers[currentLayerIndex];

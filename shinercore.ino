@@ -48,6 +48,7 @@ LayerAnimation layerAnimations[LAYER_COUNT] = {
 
 ////// Communication things
 #include "StoredProperty.h"
+int StoredMultiProperty::currentLayer = 1;
 #include "Comms.h"
 
 
@@ -148,6 +149,18 @@ void setMode(RunMode newMode)
         FastLED.setBrightness(0);
     } else {
         FastLED.setBrightness(brightnessProp.get().toInt());
+    }
+}
+
+void setLayer(int newLayer)
+{
+    localPrefs.currentLayerIndex = newLayer;
+    StoredMultiProperty::useLayer(newLayer);
+
+    // re-publish values at this layer to bluetooth so app sees them, hopefully
+    for(const auto& prop: layerProps)
+    {
+        prop->writeToChara();
     }
 }
 

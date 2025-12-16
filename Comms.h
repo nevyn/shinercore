@@ -11,34 +11,36 @@ StoredProperty nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", "unknown
     ownerName = newValue;
 });
 StoredProperty layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "layer", "unknown", "", [](const String &newValue) {
-    // ...
+    setLayer(constrain(newValue.toInt(), 0, LAYER_COUNT-1));
 });
 
 // per-layer settings
 StoredMultiProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5", "0.0,100.0", [](const String &newValue) {
-    localPrefs.currentLayer()->speed = newValue.toFloat();
-    layerAnimations[localPrefs.currentLayerIndex].duration = newValue.toFloat();
+    localPrefs.layers[StoredMultiProperty::getLayer()].speed = newValue.toFloat();
+    layerAnimations[StoredMultiProperty::getLayer()].duration = newValue.toFloat();
 });
 StoredMultiProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color1", "255 100 0", "0 0 0,255 255 255", [](const String &newValue) {
-    localPrefs.currentLayer()->mainColor = rgbFromString(newValue);
+    localPrefs.layers[StoredMultiProperty::getLayer()].mainColor = rgbFromString(newValue);
     if (localPrefs.mode == 1) buttonled.fill(rgbFromString(newValue));
 });
 StoredMultiProperty color2Prop("83595a76-1b17-4158-bcee-e702c3165caf", "color2", "240 255 0", "0 0 0,255 255 255", [](const String &newValue) {
-    localPrefs.currentLayer()->secondaryColor = rgbFromString(newValue);
+    localPrefs.layers[StoredMultiProperty::getLayer()].secondaryColor = rgbFromString(newValue);
 });
 
 StoredMultiProperty tauProp("d879c81a-09f0-4a24-a66c-cebf358bb97a", "tau", "10.0", "-100.0,100.0", [](const String &newValue) {
-    localPrefs.currentLayer()->p_tau = newValue.toFloat();
+    localPrefs.layers[StoredMultiProperty::getLayer()].p_tau = newValue.toFloat();
 });
 StoredMultiProperty phiProp("df6f0905-09bd-4bf6-b6f5-45b5a4d20d52", "phi", "4.0", "-100.0,100.0", [](const String &newValue) {
-    localPrefs.currentLayer()->p_phi = newValue.toFloat();
+    localPrefs.layers[StoredMultiProperty::getLayer()].p_phi = newValue.toFloat();
 });
 
-StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", "1", "0-3", [](const String &newValue) {
+StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", "0", "0-3", [](const String &newValue) {
     int newInt = constrain(newValue.toInt(), 0, animationFuncs.size()-1);
-    localPrefs.currentLayer()->animationIndex = newInt;
+    localPrefs.layers[StoredMultiProperty::getLayer()].animationIndex = newInt;
 });
 std::array<StoredProperty*, 10> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp, &nameProp, &layerProp, &animationProp};
+std::array<StoredProperty*, 6> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp};
+
 
 class RemoteCore
 {
