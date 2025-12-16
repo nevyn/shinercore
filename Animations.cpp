@@ -26,6 +26,27 @@ void BreatheAnim(LayerAnimation *self, float t)
     }
 }
 
+void RainbowAnim(LayerAnimation *self, float t)
+{
+    SubStrip *strip = self->backbuffer;
+    ShinyLayerSettings *prefs = self->prefs;
+
+    const uint16_t hueChange = 65535 / (uint16_t)strip->numPixels();
+    uint16_t initialhue = t*hueChange;
+    uint16_t hueOffset = 0;
+    CHSV hsv;
+    hsv.hue = initialhue;
+    hsv.val = 255;
+    hsv.sat = 240;
+
+    for(int i = 0; i < strip->numPixels(); i++)
+    {
+        strip->set(i, hsv);
+        hueOffset += hueChange;
+        hsv.hue = initialhue + (uint8_t)(hueOffset >> 8);
+    }
+}
+
 // TODO new animations:
 // sätt random leds
 // flyg fram en färg i taget, långsamt till snabbt
@@ -84,4 +105,4 @@ void FireAnim(LayerAnimation *self, float t)
 }
 
 
-std::vector<AnimateLayerFunc> animationFuncs = {NothingAnim, OpposingWavesAnim, BreatheAnim, FireAnim};
+std::vector<AnimateLayerFunc> animationFuncs = {NothingAnim, OpposingWavesAnim, BreatheAnim, RainbowAnim, FireAnim};
