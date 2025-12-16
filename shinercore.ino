@@ -33,16 +33,16 @@ CRGB btnled[1];
 SubStrip buttonled(btnled, 1);
 
 LayerAnimation layerAnimations[LAYER_COUNT] = {
-    LayerAnimation(&backbuffer, &localPrefs.layers[0]),
-    LayerAnimation(&backbuffer, &localPrefs.layers[1]),
-    LayerAnimation(&backbuffer, &localPrefs.layers[2]),
-    LayerAnimation(&backbuffer, &localPrefs.layers[3]),
-    LayerAnimation(&backbuffer, &localPrefs.layers[4]),
-    LayerAnimation(&backbuffer, &localPrefs.layers[5]),
-    LayerAnimation(&backbuffer, &localPrefs.layers[6]),
-    LayerAnimation(&backbuffer, &localPrefs.layers[7]),
-    LayerAnimation(&backbuffer, &localPrefs.layers[8]),
-    LayerAnimation(&backbuffer, &localPrefs.layers[9]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[0]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[1]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[2]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[3]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[4]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[5]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[6]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[7]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[8]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[9]),
 };
 
 
@@ -107,6 +107,11 @@ void setup(void) {
     }
 
     beats.setup();
+
+    for(int i = 0; i < LAYER_COUNT; i++)
+    {
+        ansys.addAnimation(&layerAnimations[i]);
+    }
 }
 
 unsigned long lastMillis;
@@ -124,6 +129,7 @@ void loop(void) {
     update();
     commsUpdate(delta);
 
+    allstrips.fill(CRGB::Black);
     ansys.playElapsedTime(delta);
     FastLED.show();
 

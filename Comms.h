@@ -34,8 +34,9 @@ StoredMultiProperty phiProp("df6f0905-09bd-4bf6-b6f5-45b5a4d20d52", "phi", "4.0"
     localPrefs.currentLayer()->p_phi = newValue.toFloat();
 });
 
-StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "name", "unknown", "", [](const String &newValue) {
-    // ...
+StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", "1", "0-3", [](const String &newValue) {
+    int newInt = constrain(newValue.toInt(), 0, animationFuncs.size()-1);
+    localPrefs.currentLayer()->animationIndex = newInt;
 });
 std::array<StoredProperty*, 10> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp, &nameProp, &layerProp, &animationProp};
 

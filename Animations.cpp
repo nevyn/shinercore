@@ -84,4 +84,4 @@ void FireAnim(LayerAnimation *self, float t)
 }
 
 
-std::vector<AnimateLayerFunc> animationFuncs = {OpposingWavesAnim, BreatheAnim, FireAnim};
+std::vector<AnimateLayerFunc> animationFuncs = {NothingAnim, OpposingWavesAnim, BreatheAnim, FireAnim};
