@@ -10,8 +10,8 @@ public:
     SubStrip *backbuffer;
     ProxyStrip *frontbuffer;
     ShinyLayerSettings *prefs;
-    LayerAnimation(SubStrip *backbuffer, ProxyStrip *frontbuffer, ShinyLayerSettings *prefs, TimeInterval duration = 1.0, bool repeats = false) 
-      : Animation(duration, repeats), backbuffer(backbuffer), frontbuffer(frontbuffer), prefs(prefs) {}
+    LayerAnimation(SubStrip *backbuffer, ProxyStrip *frontbuffer, ShinyLayerSettings *prefs) 
+      : Animation(1.0, true), backbuffer(backbuffer), frontbuffer(frontbuffer), prefs(prefs) {}
 protected:
     void animate(float absoluteTime);
 };

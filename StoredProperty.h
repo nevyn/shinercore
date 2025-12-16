@@ -94,4 +94,9 @@ public:
     StoredMultiProperty(const char *uuid, const char *key, String defaultValue, const char *range, std::function<void(const String&)> applicator) :
         StoredProperty(uuid, key, defaultValue, range, applicator)
     {}
+
+    // TODO:
+    // 1. Read setting with a key that contains the current layer index
+    // 2. If the current layer index changes, push the new values over bluetooth
+    // 3. on launch, read all layers and run the applicator for each index so that the app state populates fully
 };
