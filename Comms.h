@@ -37,16 +37,16 @@ StoredMultiProperty phiProp("df6f0905-09bd-4bf6-b6f5-45b5a4d20d52", "phi", "4.0"
 StoredMultiProperty blendModeProp("03686c5c-6e6f-44f0-943f-db6388d9fdd4", "blendMode", "Add", "", [](const String &newValue) {
     std::vector<String>::iterator it = std::find(blendModeNames.begin(), blendModeNames.end(), newValue);
     LayerBlendMode mode = (it != blendModeNames.end())
-        ? std::distance(blendModeNames.begin(), it)
+        ? (LayerBlendMode)std::distance(blendModeNames.begin(), it)
         : BlendModeAdd;
 
     localPrefs.layers[StoredMultiProperty::getLayer()].blendMode = mode;
 });
 
-StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", "Opposing Waves", "", [](const String &newValue) {
+StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", "Nothing", "", [](const String &newValue) {
     std::vector<String>::iterator it = std::find(animationNames.begin(), animationNames.end(), newValue);
     int animationIndex = (it != animationNames.end())
-        ? td::distance(animationNames.begin(), it)
+        ? std::distance(animationNames.begin(), it)
         : constrain(newValue.toInt(), 0, animationNames.size()-1);
 
     localPrefs.layers[StoredMultiProperty::getLayer()].animationIndex = animationIndex;
