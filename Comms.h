@@ -1,5 +1,24 @@
 BLEService shinerService("6c0de004-629d-4717-bed5-847fddfbdc2e");
 
+// Documentation characteristic - returns JSON with available blend modes and animations
+BLEStringCharacteristic documentationChara("76db9199-21af-4207-a23c-dc138a6cd42d", BLERead, 512);
+BLEDescriptor documentationNameDescriptor(kDescriptorUserDesc, "documentation");
+
+String buildDocumentationJSON() {
+    String json = "{\"blendModes\":[";
+    for(size_t i = 0; i < blendModeNames.size(); i++) {
+        if(i > 0) json += ",";
+        json += "\"" + blendModeNames[i] + "\"";
+    }
+    json += "],\"animations\":[";
+    for(size_t i = 0; i < animationNames.size(); i++) {
+        if(i > 0) json += ",";
+        json += "\"" + animationNames[i] + "\"";
+    }
+    json += "]}";
+    return json;
+}
+
 // global settings
 StoredProperty modeProp("70d4cabe-82cc-470a-a572-95c23f1316ff", "mode", "1", "0,1", [](const String &newValue) {
     setMode((RunMode)newValue.toInt());
@@ -151,6 +170,11 @@ void commsSetup(void)
         prop->load();
         prop->advertise(shinerService);
     }
+
+    // Add documentation characteristic (read-only, not stored)
+    documentationChara.addDescriptor(documentationNameDescriptor);
+    shinerService.addCharacteristic(documentationChara);
+    documentationChara.writeValue(buildDocumentationJSON());
 
     String name = ownerName + "'s shinercore";
     BLE.setDeviceName(name.c_str());
