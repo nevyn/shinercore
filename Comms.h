@@ -34,29 +34,22 @@ StoredMultiProperty phiProp("df6f0905-09bd-4bf6-b6f5-45b5a4d20d52", "phi", "4.0"
     localPrefs.layers[StoredMultiProperty::getLayer()].p_phi = newValue.toFloat();
 });
 
-StoredMultiProperty blendModeProp("03686c5c-6e6f-44f0-943f-db6388d9fdd4", "blendMode", "add", "", [](const String &newValue) {
-    LayerBlendMode mode = BlendModeAdd;
-    if(newValue == "add") mode = BlendModeAdd;
-    else if(newValue == "subtract") mode = BlendModeSubtract;
-    else if(newValue == "add-wrap") mode = BlendModeAddWrap;
-    else if(newValue == "subtract-wrap") mode = BlendModeSubtractWrap;
-    else if(newValue == "multiply") mode = BlendModeMultiply;
-    else if(newValue == "dissolve") mode = BlendModeDissolve;
-    else if(newValue == "average") mode = BlendModeAverage;
-    else if(newValue == "set") mode = BlendModeSet;
-    else if(newValue == "screen") mode = BlendModeScreen;
-    else if(newValue == "lighten") mode = BlendModeLighten;
-    else if(newValue == "darken") mode = BlendModeDarken;
-    else if(newValue == "difference") mode = BlendModeDifference;
-    else if(newValue == "overlay") mode = BlendModeOverlay;
-    else if(newValue == "color-dodge") mode = BlendModeColorDodge;
+StoredMultiProperty blendModeProp("03686c5c-6e6f-44f0-943f-db6388d9fdd4", "blendMode", "Add", "", [](const String &newValue) {
+    std::vector<String>::iterator it = std::find(blendModeNames.begin(), blendModeNames.end(), newValue);
+    LayerBlendMode mode = (it != blendModeNames.end())
+        ? std::distance(blendModeNames.begin(), it)
+        : BlendModeAdd;
 
     localPrefs.layers[StoredMultiProperty::getLayer()].blendMode = mode;
 });
 
-StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", "0", "0-3", [](const String &newValue) {
-    int newInt = constrain(newValue.toInt(), 0, animationFuncs.size()-1);
-    localPrefs.layers[StoredMultiProperty::getLayer()].animationIndex = newInt;
+StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", "Opposing Waves", "", [](const String &newValue) {
+    std::vector<String>::iterator it = std::find(animationNames.begin(), animationNames.end(), newValue);
+    int animationIndex = (it != animationNames.end())
+        ? td::distance(animationNames.begin(), it)
+        : constrain(newValue.toInt(), 0, animationNames.size()-1);
+
+    localPrefs.layers[StoredMultiProperty::getLayer()].animationIndex = animationIndex;
 });
 std::array<StoredProperty*, 10> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp, &nameProp, &layerProp, &animationProp};
 std::array<StoredProperty*, 6> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp};

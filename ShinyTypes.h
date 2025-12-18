@@ -1,6 +1,7 @@
 #ifndef __SHINY_TYPES__H
 #define __SHINY_TYPES__H
 #include "FastLED.h"
+#include <vector>
 
 enum RunMode
 {
@@ -32,6 +33,7 @@ enum LayerBlendMode
 
     BlendModeCount
 };
+extern std::vector<String> blendModeNames;
 
 struct ShinyLayerSettings
 {
