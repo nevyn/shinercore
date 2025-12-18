@@ -15,6 +15,11 @@ String buildDocumentationJSON() {
         if(i > 0) json += ",";
         json += "\"" + animationNames[i] + "\"";
     }
+    json += "],\"ledColorOrders\":[";
+    for(size_t i = 0; i < ledColorOrderNames.size(); i++) {
+        if(i > 0) json += ",";
+        json += "\"" + ledColorOrderNames[i] + "\"";
+    }
     json += "]}";
     return json;
 }
@@ -31,6 +36,14 @@ StoredProperty nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", "unknown
 });
 StoredProperty layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "layer", "unknown", "", [](const String &newValue) {
     setLayer(constrain(newValue.toInt(), 0, LAYER_COUNT-1));
+});
+StoredProperty ledColorOrderProp("f3b7c8a1-5d2e-4f19-8c6a-9e1d0b2c3a4f", "ledColorOrder", "GRB", "", [](const String &newValue) {
+    std::vector<String>::iterator it = std::find(ledColorOrderNames.begin(), ledColorOrderNames.end(), newValue);
+    LedColorOrder order = (it != ledColorOrderNames.end())
+        ? (LedColorOrder)std::distance(ledColorOrderNames.begin(), it)
+        : LedOrderGRB;
+
+    localPrefs.ledColorOrder = order;
 });
 
 // per-layer settings
@@ -70,7 +83,7 @@ StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "anima
 
     localPrefs.layers[StoredMultiProperty::getLayer()].animationIndex = animationIndex;
 });
-std::vector<StoredProperty*> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp, &nameProp, &layerProp, &animationProp, &blendModeProp};
+std::vector<StoredProperty*> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp, &nameProp, &layerProp, &animationProp, &blendModeProp, &ledColorOrderProp};
 std::vector<StoredProperty*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp};
 
 

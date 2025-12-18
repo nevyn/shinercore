@@ -16,3 +16,9 @@ std::vector<String> blendModeNames = {
     "Overlay",
     "Color Dodge",
 };
+
+std::vector<String> ledColorOrderNames = {
+    "RGB",
+    "GRB",
+    "BGR",
+};

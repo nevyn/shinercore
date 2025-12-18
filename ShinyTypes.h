@@ -35,6 +35,16 @@ enum LayerBlendMode
 };
 extern std::vector<String> blendModeNames;
 
+enum LedColorOrder
+{
+    LedOrderRGB,
+    LedOrderGRB,
+    LedOrderBGR,
+
+    LedOrderCount
+};
+extern std::vector<String> ledColorOrderNames;
+
 struct ShinyLayerSettings
 {
     CRGB mainColor = CRGB(255, 100, 0);
@@ -53,6 +63,7 @@ struct ShinySettings
     RunMode mode;
     ShinyLayerSettings layers[LAYER_COUNT];
     int currentLayerIndex = 1;
+    LedColorOrder ledColorOrder = LedOrderGRB;
     ShinyLayerSettings *currentLayer()
     {
         return &layers[currentLayerIndex];

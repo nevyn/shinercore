@@ -4,6 +4,7 @@
 #include <SubStrip.h>
 #include <ArduinoBLE.h>
 #include <Preferences.h>
+#include <algorithm>
 #include "Util.h"
 #include "BeatDetector.h"
 #include "LayerAnimation.h"
@@ -94,9 +95,9 @@ void setup(void) {
         prefs.clear();   
     }
 
-    FastLED.addLeds<WS2811, GROVE1_PIN, GRB>(lstrip, lstrip_count);
-    FastLED.addLeds<WS2811, GROVE2_PIN, GRB>(rstrip, rstrip_count);
-    FastLED.addLeds<WS2811, NEO_PIN, GRB>(btnled, 1);
+    FastLED.addLeds<WS2811, GROVE1_PIN, RGB>(lstrip, lstrip_count);
+    FastLED.addLeds<WS2811, GROVE2_PIN, RGB>(rstrip, rstrip_count);
+    FastLED.addLeds<WS2811, NEO_PIN, RGB>(btnled, 1);
     allstrips.fill(CRGB::Black);
     FastLED.show();
 
@@ -132,6 +133,8 @@ void loop(void) {
 
     allstrips.fill(CRGB::Black);
     ansys.playElapsedTime(delta);
+    applyLedColorOrder(lstrip, lstrip_count);
+    applyLedColorOrder(rstrip, rstrip_count);
     FastLED.show();
 
     if(M5.getDisplayCount() > 0)
@@ -171,5 +174,30 @@ void update(void)
         RunMode newMode = (RunMode)(!localPrefs.mode);
         String modeStr = String((int)newMode);
         modeProp.set(modeStr);
+    }
+}
+
+// Apply color order transformation before FastLED.show()
+// FastLED is configured with RGB order, so we swap colors to match the actual strip
+void applyLedColorOrder(CRGB* strip, int count)
+{
+    switch(localPrefs.ledColorOrder) {
+        case LedOrderRGB:
+            // No transformation needed - matches FastLED template
+            break;
+        case LedOrderGRB:
+            // Swap R and G
+            for(int i = 0; i < count; i++) {
+                std::swap(strip[i].r, strip[i].g);
+            }
+            break;
+        case LedOrderBGR:
+            // Swap R and B
+            for(int i = 0; i < count; i++) {
+                std::swap(strip[i].r, strip[i].b);
+            }
+            break;
+        default:
+            break;
     }
 }
