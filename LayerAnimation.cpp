@@ -9,8 +9,9 @@ void LayerAnimation::animate(float absoluteTime)
 
     for(int i = 0; i < frontbuffer->numPixels(); i++)
     {
-        CRGB a = (*backbuffer)[i];
-        CRGB b = (*frontbuffer)[i];
+        CRGB a = (*frontbuffer)[i]; // current contents on the strip
+        CRGB b = (*backbuffer)[i]; // this layer's new content to be blended in
+
         CRGB blended;
         switch(prefs->blendMode) {
             case BlendModeAdd: default: blended = a + b; break;

@@ -70,8 +70,8 @@ StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "anima
 
     localPrefs.layers[StoredMultiProperty::getLayer()].animationIndex = animationIndex;
 });
-std::array<StoredProperty*, 10> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp, &nameProp, &layerProp, &animationProp};
-std::array<StoredProperty*, 6> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp};
+std::vector<StoredProperty*> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp, &nameProp, &layerProp, &animationProp, &blendModeProp};
+std::vector<StoredProperty*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp};
 
 
 class RemoteCore
