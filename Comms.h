@@ -1,35 +1,78 @@
 BLEService shinerService("6c0de004-629d-4717-bed5-847fddfbdc2e");
 
-StoredProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5", "0.0,100.0", [](const String &newValue) {
-    localPrefs.speed = newValue.toFloat();
-    for(const auto& anim: animations)
-    {
-        anim->duration = localPrefs.speed;
+// Documentation characteristic - returns JSON with available blend modes and animations
+BLEStringCharacteristic documentationChara("76db9199-21af-4207-a23c-dc138a6cd42d", BLERead, 512);
+BLEDescriptor documentationNameDescriptor(kDescriptorUserDesc, "documentation");
+
+String buildDocumentationJSON() {
+    String json = "{\"blendModes\":[";
+    for(size_t i = 0; i < blendModeNames.size(); i++) {
+        if(i > 0) json += ",";
+        json += "\"" + blendModeNames[i] + "\"";
     }
-});
-StoredProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color1", "255 100 0", "0 0 0,255 255 255", [](const String &newValue) {
-    localPrefs.mainColor = rgbFromString(newValue);
-    if (localPrefs.mode == 1) buttonled.fill(localPrefs.mainColor);
-});
-StoredProperty color2Prop("83595a76-1b17-4158-bcee-e702c3165caf", "color2", "240 255 0", "0 0 0,255 255 255", [](const String &newValue) {
-    localPrefs.secondaryColor = rgbFromString(newValue);
-});
+    json += "],\"animations\":[";
+    for(size_t i = 0; i < animationNames.size(); i++) {
+        if(i > 0) json += ",";
+        json += "\"" + animationNames[i] + "\"";
+    }
+    json += "]}";
+    return json;
+}
+
+// global settings
 StoredProperty modeProp("70d4cabe-82cc-470a-a572-95c23f1316ff", "mode", "1", "0,1", [](const String &newValue) {
     setMode((RunMode)newValue.toInt());
 });
 StoredProperty brightnessProp("2B01", "brightness", "255", "0-255", [](const String &newValue) {
     FastLED.setBrightness(newValue.toInt());
 });
-StoredProperty tauProp("d879c81a-09f0-4a24-a66c-cebf358bb97a", "tau", "10.0", "-100.0,100.0", [](const String &newValue) {
-    localPrefs.p_tau = newValue.toFloat();
-});
-StoredProperty phiProp("df6f0905-09bd-4bf6-b6f5-45b5a4d20d52", "phi", "4.0", "-100.0,100.0", [](const String &newValue) {
-    localPrefs.p_phi = newValue.toFloat();
-});
 StoredProperty nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", "unknown", "", [](const String &newValue) {
     ownerName = newValue;
 });
-std::array<StoredProperty*, 8> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp, &nameProp};
+StoredProperty layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "layer", "unknown", "", [](const String &newValue) {
+    setLayer(constrain(newValue.toInt(), 0, LAYER_COUNT-1));
+});
+
+// per-layer settings
+StoredMultiProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5", "0.0,100.0", [](const String &newValue) {
+    localPrefs.layers[StoredMultiProperty::getLayer()].speed = newValue.toFloat();
+    layerAnimations[StoredMultiProperty::getLayer()].duration = newValue.toFloat();
+});
+StoredMultiProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color1", "255 100 0", "0 0 0,255 255 255", [](const String &newValue) {
+    localPrefs.layers[StoredMultiProperty::getLayer()].mainColor = rgbFromString(newValue);
+    if (localPrefs.mode == 1) buttonled.fill(rgbFromString(newValue));
+});
+StoredMultiProperty color2Prop("83595a76-1b17-4158-bcee-e702c3165caf", "color2", "240 255 0", "0 0 0,255 255 255", [](const String &newValue) {
+    localPrefs.layers[StoredMultiProperty::getLayer()].secondaryColor = rgbFromString(newValue);
+});
+
+StoredMultiProperty tauProp("d879c81a-09f0-4a24-a66c-cebf358bb97a", "tau", "10.0", "-100.0,100.0", [](const String &newValue) {
+    localPrefs.layers[StoredMultiProperty::getLayer()].p_tau = newValue.toFloat();
+});
+StoredMultiProperty phiProp("df6f0905-09bd-4bf6-b6f5-45b5a4d20d52", "phi", "4.0", "-100.0,100.0", [](const String &newValue) {
+    localPrefs.layers[StoredMultiProperty::getLayer()].p_phi = newValue.toFloat();
+});
+
+StoredMultiProperty blendModeProp("03686c5c-6e6f-44f0-943f-db6388d9fdd4", "blendMode", "Add", "", [](const String &newValue) {
+    std::vector<String>::iterator it = std::find(blendModeNames.begin(), blendModeNames.end(), newValue);
+    LayerBlendMode mode = (it != blendModeNames.end())
+        ? (LayerBlendMode)std::distance(blendModeNames.begin(), it)
+        : BlendModeAdd;
+
+    localPrefs.layers[StoredMultiProperty::getLayer()].blendMode = mode;
+});
+
+StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", "Nothing", "", [](const String &newValue) {
+    std::vector<String>::iterator it = std::find(animationNames.begin(), animationNames.end(), newValue);
+    int animationIndex = (it != animationNames.end())
+        ? std::distance(animationNames.begin(), it)
+        : constrain(newValue.toInt(), 0, animationNames.size()-1);
+
+    localPrefs.layers[StoredMultiProperty::getLayer()].animationIndex = animationIndex;
+});
+std::array<StoredProperty*, 10> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp, &nameProp, &layerProp, &animationProp};
+std::array<StoredProperty*, 6> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp};
+
 
 class RemoteCore
 {
@@ -127,6 +170,11 @@ void commsSetup(void)
         prop->load();
         prop->advertise(shinerService);
     }
+
+    // Add documentation characteristic (read-only, not stored)
+    documentationChara.addDescriptor(documentationNameDescriptor);
+    shinerService.addCharacteristic(documentationChara);
+    documentationChara.writeValue(buildDocumentationJSON());
 
     String name = ownerName + "'s shinercore";
     BLE.setDeviceName(name.c_str());

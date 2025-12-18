@@ -1,3 +1,8 @@
+#ifndef UTIL__H
+#define UTIL__H
+#include "M5Unified.h"
+#include "FastLED.h"
+
 class Logger : public Print
 {
     virtual size_t write(uint8_t c)
@@ -11,21 +16,22 @@ class Logger : public Print
         return written;
     }
 };
-Logger logger;
+extern Logger logger;
 
-float frand(void)
+
+inline float frand(void)
 {
   return random(1000)/1000.0;
 }
 
 // Over the input range of 0.0f->1.0f, returns a single sinusoidal cycle
 // starting at 0.0f, with the peak at 1.0f.
-float curve(float progress)
+inline float curve(float progress)
 {
     return sin((progress-0.25)*6.28f)/2.0f + 0.5f;
 }
 
-CRGB rgbFromString(const String &str)
+inline CRGB rgbFromString(const String &str)
 {
     int firstSpace = str.indexOf(' ');
     int secondSpace = str.lastIndexOf(' ');
@@ -35,3 +41,5 @@ CRGB rgbFromString(const String &str)
         str.substring(secondSpace+1, str.length()).toInt()
     );
 }
+
+#endif

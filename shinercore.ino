@@ -6,25 +6,9 @@
 #include <Preferences.h>
 #include "Util.h"
 #include "BeatDetector.h"
-
-
-enum RunMode
-{
-    Off = 0,
-    DoubleCrawl = 1,
-
-    RunModeCount
-};
-void setMode(RunMode newMode);
-
-struct ShinySettings {
-    CRGB mainColor = CRGB(255, 100, 0);
-    CRGB secondaryColor = CRGB(240, 255, 0);
-    RunMode mode;
-    float speed = 2.0;
-    float p_tau = 10.0;
-    float p_phi = 4.0;
-};
+#include "LayerAnimation.h"
+#include "Animations.h"
+#include "ShinyTypes.h"
 
 ////// Main state
 ShinySettings localPrefs;
@@ -32,6 +16,7 @@ String ownerName = "unknown";
 AnimationSystem ansys;
 Preferences prefs;
 BeatDetector beats;
+
 
 
 ////// Animation things
@@ -42,14 +27,28 @@ static const int rstrip_count = 400;
 CRGB rstrip[rstrip_count];
 SubStrip right(rstrip, rstrip_count);
 ProxyStrip allstrips({&left, &right});
+CRGB bbstrip[lstrip_count];
+SubStrip backbuffer(bbstrip, lstrip_count);
 CRGB btnled[1];
 SubStrip buttonled(btnled, 1);
-#include "StripAnimation.h"
-#include "Animations.h"
+
+LayerAnimation layerAnimations[LAYER_COUNT] = {
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[0]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[1]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[2]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[3]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[4]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[5]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[6]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[7]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[8]),
+    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[9]),
+};
 
 
 ////// Communication things
 #include "StoredProperty.h"
+int StoredMultiProperty::currentLayer = 1;
 #include "Comms.h"
 
 
@@ -109,6 +108,11 @@ void setup(void) {
     }
 
     beats.setup();
+
+    for(int i = 0; i < LAYER_COUNT; i++)
+    {
+        ansys.addAnimation(&layerAnimations[i]);
+    }
 }
 
 unsigned long lastMillis;
@@ -126,6 +130,7 @@ void loop(void) {
     update();
     commsUpdate(delta);
 
+    allstrips.fill(CRGB::Black);
     ansys.playElapsedTime(delta);
     FastLED.show();
 
@@ -138,18 +143,24 @@ void loop(void) {
 void setMode(RunMode newMode)
 {
     localPrefs.mode = newMode;
-    buttonled.fill(localPrefs.mode==0 ? CRGB::Black : localPrefs.mode==1 ? localPrefs.mainColor : localPrefs.secondaryColor);
+    buttonled.fill(localPrefs.mode==Off ? CRGB::Black :  localPrefs.layers[0].mainColor);
 
     if(localPrefs.mode == Off) {
         FastLED.setBrightness(0);
     } else {
         FastLED.setBrightness(brightnessProp.get().toInt());
+    }
+}
 
-        ansys.removeAnimation(0);
-        StripAnimation *anim = animations[(int)localPrefs.mode-1];
-        anim->prefs = &localPrefs;
-        anim->duration = anim->prefs->speed;
-        ansys.addAnimation(anim);
+void setLayer(int newLayer)
+{
+    localPrefs.currentLayerIndex = newLayer;
+    StoredMultiProperty::useLayer(newLayer);
+
+    // re-publish values at this layer to bluetooth so app sees them, hopefully
+    for(const auto& prop: layerProps)
+    {
+        prop->writeToChara();
     }
 }
 
@@ -157,7 +168,7 @@ void update(void)
 {
     if(M5.BtnA.wasPressed())
     {
-        RunMode newMode = (RunMode)((localPrefs.mode + 1) % (animations.size()+1));
+        RunMode newMode = (RunMode)(!localPrefs.mode);
         String modeStr = String((int)newMode);
         modeProp.set(modeStr);
     }
