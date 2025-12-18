@@ -15,7 +15,22 @@ void setMode(RunMode newMode);
 
 enum LayerBlendMode
 {
-    BlendModeAdd
+    BlendModeAdd,
+    BlendModeSubtract,
+    BlendModeAddWrap,
+    BlendModeSubtractWrap,
+    BlendModeMultiply,
+    BlendModeDissolve,
+    BlendModeAverage,
+    BlendModeSet,
+    BlendModeScreen,
+    BlendModeLighten,
+    BlendModeDarken,
+    BlendModeDifference,
+    BlendModeOverlay,
+    BlendModeColorDodge,
+
+    BlendModeCount
 };
 
 struct ShinyLayerSettings
