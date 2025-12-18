@@ -21,7 +21,7 @@ void LayerAnimation::animate(float absoluteTime)
             case BlendModeMultiply: blended = CRGB((a.r * b.r) >> 8, (a.g * b.g) >> 8, (a.b * b.b) >> 8); break;
             case BlendModeDissolve: blended = random8() < 128 ? a : b; break;
             case BlendModeAverage: blended = CRGB((a.r + b.r) >> 1, (a.g + b.g) >> 1, (a.b + b.b) >> 1); break;
-            case BlendModeSet: blended = a; break;
+            case BlendModeSet: blended = b; break;
             case BlendModeScreen: blended = CRGB(255 - (((255-a.r) * (255-b.r)) >> 8),
                                                  255 - (((255-a.g) * (255-b.g)) >> 8),
                                                  255 - (((255-a.b) * (255-b.b)) >> 8)); break;
@@ -29,9 +29,9 @@ void LayerAnimation::animate(float absoluteTime)
             case BlendModeDarken: blended = CRGB(min(a.r, b.r), min(a.g, b.g), min(a.b, b.b)); break;
             case BlendModeDifference: blended = CRGB(abs(a.r - b.r), abs(a.g - b.g), abs(a.b - b.b)); break;
             case BlendModeOverlay: blended = CRGB(
-                b.r < 128 ? (2 * a.r * b.r) >> 8 : 255 - ((2 * (255-a.r) * (255-b.r)) >> 8),
-                b.g < 128 ? (2 * a.g * b.g) >> 8 : 255 - ((2 * (255-a.g) * (255-b.g)) >> 8),
-                b.b < 128 ? (2 * a.b * b.b) >> 8 : 255 - ((2 * (255-a.b) * (255-b.b)) >> 8)); break;
+                a.r < 128 ? (2 * a.r * b.r) >> 8 : 255 - ((2 * (255-a.r) * (255-b.r)) >> 8),
+                a.g < 128 ? (2 * a.g * b.g) >> 8 : 255 - ((2 * (255-a.g) * (255-b.g)) >> 8),
+                a.b < 128 ? (2 * a.b * b.b) >> 8 : 255 - ((2 * (255-a.b) * (255-b.b)) >> 8)); break;
             case BlendModeColorDodge: blended = CRGB(
                 b.r == 255 ? 255 : min(255, (a.r << 8) / (255 - b.r)),
                 b.g == 255 ? 255 : min(255, (a.g << 8) / (255 - b.g)),
