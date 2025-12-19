@@ -89,7 +89,7 @@ void CometAnim(LayerAnimation *self, float t)
     float cometWidth = std::max(1.0f, prefs->p_phi); // head width
     
     // Comet position cycles through strip
-    float cometPos = fmod(t * numPixels / 4.0f, numPixels + tailLength);
+    float cometPos = fmod(t * numPixels, numPixels + tailLength);
     
     for(int i = 0; i < numPixels; i++)
     {
@@ -123,7 +123,7 @@ void ScannerAnim(LayerAnimation *self, float t)
     // Ping-pong position using triangle wave
     float cycle = fmod(t, 2.0f); // 0 to 2
     float pos = (cycle < 1.0f) ? cycle : (2.0f - cycle); // 0->1->0
-    float scannerPos = pos * (numPixels - 1);
+    float scannerPos = pos * (numPixels - 1) * (prefs->p_tau / 10);
     
     for(int i = 0; i < numPixels; i++)
     {
