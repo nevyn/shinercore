@@ -5,6 +5,9 @@ void LayerAnimation::animate(float absoluteTime)
 { 
     AnimateLayerFunc func = animationFuncs[prefs->animationIndex];
     backbuffer->fill(CRGB::Black);
+
+    if(prefs->animationIndex == 0) return; // NoAnimation? do nothing, don't waste time filling and blending.
+
     func(this, absoluteTime); 
 
     for(int i = 0; i < frontbuffer->numPixels(); i++)
