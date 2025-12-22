@@ -52,7 +52,7 @@ StoredProperty ledColorOrderProp("f3b7c8a1-5d2e-4f19-8c6a-9e1d0b2c3a4f", "ledCol
 });
 
 // per-layer settings
-StoredMultiProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "0.5", "0.0,100.0", [](const String &newValue) {
+StoredMultiProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "1.0", "0.0,100.0", [](const String &newValue) {
     localPrefs.layers[StoredMultiProperty::getLayer()].speed = newValue.toFloat();
     layerAnimations[StoredMultiProperty::getLayer()].duration = newValue.toFloat();
 });
