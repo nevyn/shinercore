@@ -40,6 +40,7 @@ StoredProperty layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "layer", "1", "
 StoredProperty ledCountProp("f5c67dcb-8798-4818-901f-cff9917d1a62", "ledCount", "400", "0-800", [](const String &newValue) {
     localPrefs.ledCount = constrain(newValue.toInt(), 0, MAX_LED_COUNT);
     ledstrip.setNumPixels(localPrefs.ledCount);
+    backbuffer.setNumPixels(localPrefs.ledCount);
 });
 StoredProperty ledColorOrderProp("f3b7c8a1-5d2e-4f19-8c6a-9e1d0b2c3a4f", "ledColorOrder", "GRB", "", [](const String &newValue) {
     std::vector<String>::iterator it = std::find(ledColorOrderNames.begin(), ledColorOrderNames.end(), newValue);
