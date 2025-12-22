@@ -13,6 +13,7 @@ enum RunMode
 void setMode(RunMode newMode);
 
 #define LAYER_COUNT 10
+#define MAX_LED_COUNT 800
 
 enum LayerBlendMode
 {
@@ -64,6 +65,7 @@ struct ShinySettings
     ShinyLayerSettings layers[LAYER_COUNT];
     int currentLayerIndex = 1;
     LedColorOrder ledColorOrder = LedOrderGRB;
+    int ledCount = MAX_LED_COUNT/2;
     ShinyLayerSettings *currentLayer()
     {
         return &layers[currentLayerIndex];

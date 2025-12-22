@@ -37,6 +37,10 @@ StoredProperty nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", "unknown
 StoredProperty layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "layer", "unknown", "", [](const String &newValue) {
     setLayer(constrain(newValue.toInt(), 0, LAYER_COUNT-1));
 });
+StoredProperty ledCountProp("f5c67dcb-8798-4818-901f-cff9917d1a62", "ledCount", "400", "0-800", [](const String &newValue) {
+    localPrefs.ledCount = constrain(newValue.toInt(), 0, MAX_LED_COUNT);
+    ledstrip.setNumPixels(localPrefs.ledCount);
+});
 StoredProperty ledColorOrderProp("f3b7c8a1-5d2e-4f19-8c6a-9e1d0b2c3a4f", "ledColorOrder", "GRB", "", [](const String &newValue) {
     std::vector<String>::iterator it = std::find(ledColorOrderNames.begin(), ledColorOrderNames.end(), newValue);
     LedColorOrder order = (it != ledColorOrderNames.end())
@@ -83,9 +87,15 @@ StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "anima
 
     localPrefs.layers[StoredMultiProperty::getLayer()].animationIndex = animationIndex;
 });
-std::vector<StoredProperty*> props = {&speedProp, &colorProp, &color2Prop, &modeProp, &brightnessProp, &tauProp, &phiProp, &nameProp, &layerProp, &animationProp, &blendModeProp, &ledColorOrderProp};
+std::vector<StoredProperty*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &ledColorOrderProp, &ledCountProp};
 std::vector<StoredProperty*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp};
-
+std::vector<StoredProperty*> props = [&] {
+    std::vector<StoredProperty*> v;
+    v.reserve(globalProps.size() + layerProps.size());
+    v.insert(v.end(), globalProps.begin(), globalProps.end());
+    v.insert(v.end(), layerProps.begin(), layerProps.end());
+    return v;
+}();
 
 class RemoteCore
 {

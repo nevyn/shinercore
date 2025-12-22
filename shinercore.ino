@@ -21,29 +21,25 @@ BeatDetector beats;
 
 
 ////// Animation things
-static const int lstrip_count = 400;
-CRGB lstrip[lstrip_count];
-SubStrip left(lstrip, lstrip_count);
-static const int rstrip_count = 400;
-CRGB rstrip[rstrip_count];
-SubStrip right(rstrip, rstrip_count);
-ProxyStrip allstrips({&left, &right});
-CRGB bbstrip[lstrip_count];
-SubStrip backbuffer(bbstrip, lstrip_count);
+CRGB rgbs[MAX_LED_COUNT];
+SubStrip ledstrip(rgbs, MAX_LED_COUNT);
+
+CRGB bbstrip[MAX_LED_COUNT];
+SubStrip backbuffer(bbstrip, MAX_LED_COUNT);
 CRGB btnled[1];
 SubStrip buttonled(btnled, 1);
 
 LayerAnimation layerAnimations[LAYER_COUNT] = {
-    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[0]),
-    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[1]),
-    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[2]),
-    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[3]),
-    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[4]),
-    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[5]),
-    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[6]),
-    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[7]),
-    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[8]),
-    LayerAnimation(&backbuffer, &allstrips, &localPrefs.layers[9]),
+    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[0]),
+    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[1]),
+    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[2]),
+    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[3]),
+    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[4]),
+    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[5]),
+    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[6]),
+    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[7]),
+    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[8]),
+    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[9]),
 };
 
 
@@ -95,10 +91,10 @@ void setup(void) {
         prefs.clear();   
     }
 
-    FastLED.addLeds<WS2811, GROVE1_PIN, RGB>(lstrip, lstrip_count);
-    FastLED.addLeds<WS2811, GROVE2_PIN, RGB>(rstrip, rstrip_count);
+    FastLED.addLeds<WS2811, GROVE1_PIN, RGB>(rgbs, MAX_LED_COUNT);
+    FastLED.addLeds<WS2811, GROVE2_PIN, RGB>(rgbs, MAX_LED_COUNT);
     FastLED.addLeds<WS2811, NEO_PIN, RGB>(btnled, 1);
-    allstrips.fill(CRGB::Black);
+    ledstrip.fill(CRGB::Black);
     FastLED.show();
 
     commsSetup();
@@ -131,10 +127,9 @@ void loop(void) {
     update();
     commsUpdate(delta);
 
-    allstrips.fill(CRGB::Black);
+    ledstrip.fill(CRGB::Black); // TODO: clear with layer 0 instead, to allow feedback patterns
     ansys.playElapsedTime(delta);
-    applyLedColorOrder(lstrip, lstrip_count);
-    applyLedColorOrder(rstrip, rstrip_count);
+    applyLedColorOrder(rgbs, localPrefs.ledCount);
     FastLED.show();
 
     if(M5.getDisplayCount() > 0)

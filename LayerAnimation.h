@@ -8,9 +8,9 @@ class LayerAnimation : public Animation
 {
 public:
     SubStrip *backbuffer;
-    ProxyStrip *frontbuffer;
+    SubStrip *frontbuffer;
     ShinyLayerSettings *prefs;
-    LayerAnimation(SubStrip *backbuffer, ProxyStrip *frontbuffer, ShinyLayerSettings *prefs) 
+    LayerAnimation(SubStrip *backbuffer, SubStrip *frontbuffer, ShinyLayerSettings *prefs) 
       : Animation(1.0, true), backbuffer(backbuffer), frontbuffer(frontbuffer), prefs(prefs) {}
 protected:
     void animate(float absoluteTime);
