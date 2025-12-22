@@ -15,11 +15,11 @@ static inline float hashFloat(uint32_t seed) {
     return (hash(seed) & 0xFFFF) / 65535.0f;
 }
 
-void NothingAnim(LayerAnimation *self, float t)
+void NothingAnim(LayerAnimation *self, TimeInterval t)
 {
 }
 
-void OpposingWavesAnim(LayerAnimation *self, float t)
+void OpposingWavesAnim(LayerAnimation *self, TimeInterval t)
 {
     SubStrip *strip = self->backbuffer;
     ShinyLayerSettings *prefs = self->prefs;
@@ -30,7 +30,7 @@ void OpposingWavesAnim(LayerAnimation *self, float t)
 }
 
 // tau is waveform length, and phi is phase offset
-void SingleWaveAnim(LayerAnimation *self, float t)
+void SingleWaveAnim(LayerAnimation *self, TimeInterval t)
 {
     SubStrip *strip = self->backbuffer;
     ShinyLayerSettings *prefs = self->prefs;
@@ -41,7 +41,7 @@ void SingleWaveAnim(LayerAnimation *self, float t)
 }
 
 // simple fade between two colors
-void BreatheAnim(LayerAnimation *self, float t)
+void BreatheAnim(LayerAnimation *self, TimeInterval t)
 {
     SubStrip *strip = self->backbuffer;
     ShinyLayerSettings *prefs = self->prefs;
@@ -54,7 +54,7 @@ void BreatheAnim(LayerAnimation *self, float t)
 // Fixed rainbow: cycles hue across strip, animates over time
 // tau controls how many rainbow cycles fit on the strip (higher = more rainbows)
 // phi controls animation speed multiplier
-void RainbowAnim(LayerAnimation *self, float t)
+void RainbowAnim(LayerAnimation *self, TimeInterval t)
 {
     SubStrip *strip = self->backbuffer;
     ShinyLayerSettings *prefs = self->prefs;
@@ -79,7 +79,7 @@ void RainbowAnim(LayerAnimation *self, float t)
 // Comet/meteor: bright head with fading tail
 // tau controls tail length (higher = longer tail)
 // phi controls comet width
-void CometAnim(LayerAnimation *self, float t)
+void CometAnim(LayerAnimation *self, TimeInterval t)
 {
     SubStrip *strip = self->backbuffer;
     ShinyLayerSettings *prefs = self->prefs;
@@ -111,7 +111,7 @@ void CometAnim(LayerAnimation *self, float t)
 // Cylon/Knight Rider scanner - light bounces back and forth
 // tau controls scanner width
 // phi controls how much the scanner "bleeds" (glow width)
-void ScannerAnim(LayerAnimation *self, float t)
+void ScannerAnim(LayerAnimation *self, TimeInterval t)
 {
     SubStrip *strip = self->backbuffer;
     ShinyLayerSettings *prefs = self->prefs;
@@ -141,7 +141,7 @@ void ScannerAnim(LayerAnimation *self, float t)
 // Twinkle: stateless random stars using hash function
 // tau controls twinkle density (how many stars)
 // phi controls twinkle speed
-void TwinkleAnim(LayerAnimation *self, float t)
+void TwinkleAnim(LayerAnimation *self, TimeInterval t)
 {
     SubStrip *strip = self->backbuffer;
     ShinyLayerSettings *prefs = self->prefs;
@@ -176,7 +176,7 @@ void TwinkleAnim(LayerAnimation *self, float t)
 // Theater chase / marquee lights
 // tau controls spacing between lit pixels
 // phi controls group size (how many lit in a row)
-void TheaterChaseAnim(LayerAnimation *self, float t)
+void TheaterChaseAnim(LayerAnimation *self, TimeInterval t)
 {
     SubStrip *strip = self->backbuffer;
     ShinyLayerSettings *prefs = self->prefs;
@@ -204,7 +204,7 @@ void TheaterChaseAnim(LayerAnimation *self, float t)
 // Color wipe: fills strip with color, then clears
 // tau controls wipe speed
 // phi controls pause time at full/empty
-void ColorWipeAnim(LayerAnimation *self, float t)
+void ColorWipeAnim(LayerAnimation *self, TimeInterval t)
 {
     SubStrip *strip = self->backbuffer;
     ShinyLayerSettings *prefs = self->prefs;
@@ -248,7 +248,7 @@ void ColorWipeAnim(LayerAnimation *self, float t)
 // Gradient pulse: smooth gradient between colors that shifts over time
 // tau controls gradient steepness
 // phi controls number of gradient cycles on strip
-void GradientPulseAnim(LayerAnimation *self, float t)
+void GradientPulseAnim(LayerAnimation *self, TimeInterval t)
 {
     SubStrip *strip = self->backbuffer;
     ShinyLayerSettings *prefs = self->prefs;
@@ -276,7 +276,7 @@ void GradientPulseAnim(LayerAnimation *self, float t)
 // Sparkle: random bright flashes on a dim background
 // tau controls flash duration
 // phi controls flash density
-void SparkleAnim(LayerAnimation *self, float t)
+void SparkleAnim(LayerAnimation *self, TimeInterval t)
 {
     SubStrip *strip = self->backbuffer;
     ShinyLayerSettings *prefs = self->prefs;

@@ -1,8 +1,16 @@
 #include "LayerAnimation.h"
 #include "Animations.h"
 
-void LayerAnimation::animate(float absoluteTime) 
-{ 
+void LayerAnimation::animate(float fraction) 
+{
+    // if we wrap over to 0, assume another full second has passed
+    if(fraction < _lastFraction)
+    {
+        _accumulated += 1.0;
+    }
+    _lastFraction = fraction;
+    TimeInterval absoluteTime = _accumulated + fraction;
+
     AnimateLayerFunc func = animationFuncs[prefs->animationIndex];
     backbuffer->fill(CRGB::Black);
 
