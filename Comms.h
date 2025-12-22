@@ -34,7 +34,7 @@ StoredProperty brightnessProp("2B01", "brightness", "255", "0-255", [](const Str
 StoredProperty nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", "unknown", "", [](const String &newValue) {
     ownerName = newValue;
 });
-StoredProperty layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "layer", "unknown", "", [](const String &newValue) {
+StoredProperty layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "layer", "1", "", [](const String &newValue) {
     setLayer(constrain(newValue.toInt(), 0, LAYER_COUNT-1));
 });
 StoredProperty ledCountProp("f5c67dcb-8798-4818-901f-cff9917d1a62", "ledCount", "400", "0-800", [](const String &newValue) {
