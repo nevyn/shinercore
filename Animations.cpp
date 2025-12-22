@@ -118,12 +118,9 @@ void ScannerAnim(LayerAnimation *self, float t)
     int numPixels = strip->numPixels();
     
     float scannerWidth = std::max(1.0f, prefs->p_tau);
-    float glowWidth = prefs->p_phi * 3.0f;
+    float glowWidth = prefs->p_phi;
     
-    // Ping-pong position using triangle wave
-    float cycle = fmod(t, 2.0f); // 0 to 2
-    float pos = (cycle < 1.0f) ? cycle : (2.0f - cycle); // 0->1->0
-    float scannerPos = pos * (numPixels - 1) * (prefs->p_tau / 10);
+    float scannerPos = curve(t) * (numPixels-1);
     
     for(int i = 0; i < numPixels; i++)
     {

@@ -24,8 +24,8 @@ inline float frand(void)
   return random(1000)/1000.0;
 }
 
-// Over the input range of 0.0f->1.0f, returns a single sinusoidal cycle
-// starting at 0.0f, with the peak at 1.0f.
+// Over the input range 0.0f–1.0f, returns one full sine cycle
+// mapped to [0, 1], starting and ending at 0.0f, with a peak value of 1.0f.
 inline float curve(float progress)
 {
     return sin((progress-0.25)*6.28f)/2.0f + 0.5f;
