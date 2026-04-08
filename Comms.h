@@ -37,6 +37,9 @@ StoredProperty nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", "unknown
 StoredProperty layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "layer", "1", "", [](const String &newValue) {
     setLayer(constrain(newValue.toInt(), 0, LAYER_COUNT-1));
 });
+StoredProperty presetProp("8b989f5e-3d22-4377-80c9-c54eeb459518", "preset", "0", "0,4", [](const String &newValue) {
+    setPreset(constrain(newValue.toInt(), 0, PRESET_COUNT-1));
+});
 StoredProperty ledCountProp("f5c67dcb-8798-4818-901f-cff9917d1a62", "ledCount", "400", "0-800", [](const String &newValue) {
     localPrefs.ledCount = constrain(newValue.toInt(), 0, MAX_LED_COUNT);
     ledstrip.setNumPixels(localPrefs.ledCount);
@@ -88,7 +91,7 @@ StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "anima
 
     localPrefs.layers[StoredMultiProperty::getLayer()].animationIndex = animationIndex;
 });
-std::vector<StoredProperty*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &ledColorOrderProp, &ledCountProp};
+std::vector<StoredProperty*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &presetProp, &ledColorOrderProp, &ledCountProp};
 std::vector<StoredProperty*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp};
 std::vector<StoredProperty*> props = [&] {
     std::vector<StoredProperty*> v;

@@ -46,6 +46,7 @@ LayerAnimation layerAnimations[LAYER_COUNT] = {
 ////// Communication things
 #include "StoredProperty.h"
 int StoredMultiProperty::currentLayer = 1;
+int StoredMultiProperty::currentPreset = 0;
 #include "Comms.h"
 
 
@@ -150,6 +151,18 @@ void setMode(RunMode newMode)
     }
 }
 
+void setPreset(int newPreset)
+{
+    localPrefs.currentPresetIndex = newPreset;
+    StoredMultiProperty::usePreset(newPreset);
+
+    // reload all layer settings from NVS for this preset
+    for(const auto& prop: layerProps)
+    {
+        prop->load();
+    }
+}
+
 void setLayer(int newLayer)
 {
     localPrefs.currentLayerIndex = newLayer;
@@ -162,13 +175,24 @@ void setLayer(int newLayer)
     }
 }
 
+bool longPressHandled = false;
 void update(void)
 {
     if(M5.BtnA.wasPressed())
     {
+        longPressHandled = false;
+    }
+    if(!longPressHandled && M5.BtnA.pressedFor(600))
+    {
+        longPressHandled = true;
         RunMode newMode = (RunMode)(!localPrefs.mode);
         String modeStr = String((int)newMode);
         modeProp.set(modeStr);
+    }
+    if(M5.BtnA.wasReleased() && !longPressHandled)
+    {
+        int nextPreset = (localPrefs.currentPresetIndex + 1) % PRESET_COUNT;
+        presetProp.set(String(nextPreset));
     }
 }
 

@@ -128,11 +128,20 @@ public:
 
     static int getLayer() { return currentLayer; }
     static void useLayer(int newLayer) { currentLayer = newLayer; }
+    static int getPreset() { return currentPreset; }
+    static void usePreset(int newPreset) { currentPreset = newPreset; }
 protected:
     static int currentLayer;
+    static int currentPreset;
     virtual String currentKey()
     {
-        return key + "-" + String(currentLayer);
+        // Preset 0 uses the old key format ("speed-0") for backwards compat
+        // with devices that already have stored settings from before presets existed
+        String k = key + "-" + String(currentLayer);
+        if (currentPreset > 0) {
+            k += "-" + String(currentPreset);
+        }
+        return k;
     }
 
     // TODO:
