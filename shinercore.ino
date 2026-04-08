@@ -175,6 +175,18 @@ void setLayer(int newLayer)
     }
 }
 
+bool presetHasAnimations(int presetIndex)
+{
+    for(int layer = 0; layer < LAYER_COUNT; layer++)
+    {
+        String key = "animation-" + String(layer);
+        if(presetIndex > 0) key += "-" + String(presetIndex);
+        String val = prefs.getString(key.c_str(), "Nothing");
+        if(val != "Nothing") return true;
+    }
+    return false;
+}
+
 bool longPressHandled = false;
 void update(void)
 {
@@ -191,7 +203,12 @@ void update(void)
     }
     if(M5.BtnA.wasReleased() && !longPressHandled)
     {
-        int nextPreset = (localPrefs.currentPresetIndex + 1) % PRESET_COUNT;
+        int nextPreset = localPrefs.currentPresetIndex;
+        for(int i = 0; i < PRESET_COUNT - 1; i++)
+        {
+            nextPreset = (nextPreset + 1) % PRESET_COUNT;
+            if(presetHasAnimations(nextPreset)) break;
+        }
         presetProp.set(String(nextPreset));
     }
 }
