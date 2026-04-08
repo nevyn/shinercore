@@ -70,10 +70,16 @@ void displayUpdate(M5GFX &display)
     #define GROVE1_PIN 1
     #define GROVE2_PIN 2
     #define NEO_PIN 35
+    #define HAS_GPIO_CONTROLS
+    const int presetPins[PRESET_COUNT] = {5, 6, 7, 8, 39};
+    #define ENABLE_PIN 38
 #elif defined(ARDUINO_M5STACK_ATOM) || defined(ARDUINO_M5Stack_ATOM) || defined(ARDUINO_M5STACK_ATOM_ECHO)
     #define GROVE1_PIN 26
     #define GROVE2_PIN 32
     #define NEO_PIN 27
+    #define HAS_GPIO_CONTROLS
+    const int presetPins[PRESET_COUNT] = {22, 19, 23, 33, 21};
+    #define ENABLE_PIN 25
 #elif defined(ARDUINO_M5Stick_C) || defined(ARDUINO_M5Stick_C_PLUS) || defined(ARDUINO_M5STACK_STICKC_PLUS)
     #define GROVE1_PIN 32
     #define GROVE2_PIN 33
@@ -99,6 +105,14 @@ void setup(void) {
     FastLED.show();
 
     commsSetup();
+
+#ifdef HAS_GPIO_CONTROLS
+    for(int i = 0; i < PRESET_COUNT; i++)
+    {
+        pinMode(presetPins[i], INPUT_PULLUP);
+    }
+    pinMode(ENABLE_PIN, INPUT_PULLUP);
+#endif
 
     if(M5.getDisplayCount() > 0)
     {
@@ -188,8 +202,14 @@ bool presetHasAnimations(int presetIndex)
 }
 
 bool longPressHandled = false;
+
+#ifdef HAS_GPIO_CONTROLS
+bool enablePinOverride = false; // true when ENABLE_PIN is actively pulling low
+#endif
+
 void update(void)
 {
+    // Built-in button: short press = cycle preset, long press = on/off
     if(M5.BtnA.wasPressed())
     {
         longPressHandled = false;
@@ -211,6 +231,30 @@ void update(void)
         }
         presetProp.set(String(nextPreset));
     }
+
+#ifdef HAS_GPIO_CONTROLS
+    // GPIO preset buttons: pull low to select
+    for(int i = 0; i < PRESET_COUNT; i++)
+    {
+        if(digitalRead(presetPins[i]) == LOW && localPrefs.currentPresetIndex != i)
+        {
+            presetProp.set(String(i));
+        }
+    }
+
+    // GPIO enable pin: pull low = force off, floating/high = normal operation
+    bool enablePulledLow = (digitalRead(ENABLE_PIN) == LOW);
+    if(enablePulledLow && !enablePinOverride)
+    {
+        enablePinOverride = true;
+        modeProp.set("0");
+    }
+    else if(!enablePulledLow && enablePinOverride)
+    {
+        enablePinOverride = false;
+        modeProp.set("1");
+    }
+#endif
 }
 
 // Apply color order transformation before FastLED.show()
