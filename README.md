@@ -34,5 +34,33 @@ Install the following libraries from
 - [ ] if m5stick, automatically take master clock in mesh
 
 
+## LED Strip Ordering Guide
+
+The firmware uses the WS2811 protocol via FastLED, which is compatible with
+several chip families:
+
+| Chip | Notes |
+|------|-------|
+| **WS2812B** | Most common "NeoPixel" chip. Built into each LED. 5V. This is the default choice for strips. |
+| **WS2811** | External driver IC (one chip drives 3 LEDs). Typically 12V. Same protocol as WS2812B. |
+| **SK6812** | WS2812B-compatible clone. Also available in RGBW (4-channel with dedicated white). |
+
+**Key specs when ordering:**
+
+| Spec | Typical choices |
+|------|-----------------|
+| Density | 30/m, **60/m**, or 144/m |
+| Voltage | **5V (WS2812B)** or 12V (WS2811) |
+| Color | **RGB (3-channel)** or RGBW (4-channel, SK6812) |
+| IP rating | IP30 (bare), **IP65 (silicone coated)**, IP67 (silicone tube) |
+
+Recommended configuration bolded.
+
+**Where to buy:** Good sources are Adafruit (search "NeoPixel strip"), 
+BTF-Lighting (Amazon), or AliExpress for bulk reels. DigiKey has limited strip selection.
+
+**Power note:** At 5V, long runs need power injection every ~3m at 60 LEDs/m
+to avoid voltage drop and color shift.
+
 ## Resources
 https://btprodspecificationrefs.blob.core.windows.net/assigned-numbers/Assigned%20Number%20Types/Assigned_Numbers.pdf
