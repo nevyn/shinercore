@@ -19,6 +19,12 @@ void NothingAnim(LayerAnimation *self, TimeInterval t)
 {
 }
 
+void StaticAnim(LayerAnimation *self, TimeInterval t)
+{
+    SubStrip *strip = self->backbuffer;
+    strip->fill(self->prefs->mainColor);
+}
+
 void OpposingWavesAnim(LayerAnimation *self, TimeInterval t)
 {
     SubStrip *strip = self->backbuffer;
@@ -323,6 +329,7 @@ void SparkleAnim(LayerAnimation *self, TimeInterval t)
 
 extern std::vector<String> animationNames = {
     "Nothing",
+    "Static",
     "Opposing Waves",
     "Single Wave",
     "Breathe",
@@ -337,6 +344,7 @@ extern std::vector<String> animationNames = {
 };
 std::vector<AnimateLayerFunc> animationFuncs = {
     NothingAnim,
+    StaticAnim,
     OpposingWavesAnim,
     SingleWaveAnim,
     BreatheAnim,
