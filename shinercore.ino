@@ -66,19 +66,23 @@ void displayUpdate(M5GFX &display)
 
 ///// Runtime things
 
+#define DIRECT_PRESET_PIN_COUNT 4
+
 #if defined(CONFIG_IDF_TARGET_ESP32S3) // M5AtomLiteS3
     #define GROVE1_PIN 1
     #define GROVE2_PIN 2
     #define NEO_PIN 35
     #define HAS_GPIO_CONTROLS
-    const int presetPins[PRESET_COUNT] = {5, 6, 7, 8, 39};
+    const int presetPins[DIRECT_PRESET_PIN_COUNT] = {5, 6, 7, 8};
+    #define CYCLE_PIN 39
     #define ENABLE_PIN 38
 #elif defined(ARDUINO_M5STACK_ATOM) || defined(ARDUINO_M5Stack_ATOM) || defined(ARDUINO_M5STACK_ATOM_ECHO)
     #define GROVE1_PIN 26
     #define GROVE2_PIN 32
     #define NEO_PIN 27
     #define HAS_GPIO_CONTROLS
-    const int presetPins[PRESET_COUNT] = {22, 19, 23, 33, 21};
+    const int presetPins[DIRECT_PRESET_PIN_COUNT] = {22, 19, 23, 33};
+    #define CYCLE_PIN 21
     #define ENABLE_PIN 25
 #elif defined(ARDUINO_M5Stick_C) || defined(ARDUINO_M5Stick_C_PLUS) || defined(ARDUINO_M5STACK_STICKC_PLUS)
     #define GROVE1_PIN 32
@@ -107,10 +111,11 @@ void setup(void) {
     commsSetup();
 
 #ifdef HAS_GPIO_CONTROLS
-    for(int i = 0; i < PRESET_COUNT; i++)
+    for(int i = 0; i < DIRECT_PRESET_PIN_COUNT; i++)
     {
         pinMode(presetPins[i], INPUT_PULLUP);
     }
+    pinMode(CYCLE_PIN, INPUT_PULLUP);
     pinMode(ENABLE_PIN, INPUT_PULLUP);
 #endif
 
@@ -201,10 +206,30 @@ bool presetHasAnimations(int presetIndex)
     return false;
 }
 
-bool longPressHandled = false;
+void cycleToNextPreset()
+{
+    int nextPreset = localPrefs.currentPresetIndex;
+    for(int i = 0; i < PRESET_COUNT - 1; i++)
+    {
+        nextPreset = (nextPreset + 1) % PRESET_COUNT;
+        if(presetHasAnimations(nextPreset)) break;
+    }
+    presetProp.set(String(nextPreset));
+}
+
+void toggleMode()
+{
+    RunMode newMode = (RunMode)(!localPrefs.mode);
+    modeProp.set(String((int)newMode));
+}
+
+bool builtinLongPressHandled = false;
 
 #ifdef HAS_GPIO_CONTROLS
 bool enablePinOverride = false; // true when ENABLE_PIN is actively pulling low
+bool cyclePinPressed = false;
+unsigned long cyclePinPressedAt = 0;
+bool cyclePinLongPressHandled = false;
 #endif
 
 void update(void)
@@ -212,34 +237,45 @@ void update(void)
     // Built-in button: short press = cycle preset, long press = on/off
     if(M5.BtnA.wasPressed())
     {
-        longPressHandled = false;
+        builtinLongPressHandled = false;
     }
-    if(!longPressHandled && M5.BtnA.pressedFor(600))
+    if(!builtinLongPressHandled && M5.BtnA.pressedFor(600))
     {
-        longPressHandled = true;
-        RunMode newMode = (RunMode)(!localPrefs.mode);
-        String modeStr = String((int)newMode);
-        modeProp.set(modeStr);
+        builtinLongPressHandled = true;
+        toggleMode();
     }
-    if(M5.BtnA.wasReleased() && !longPressHandled)
+    if(M5.BtnA.wasReleased() && !builtinLongPressHandled)
     {
-        int nextPreset = localPrefs.currentPresetIndex;
-        for(int i = 0; i < PRESET_COUNT - 1; i++)
-        {
-            nextPreset = (nextPreset + 1) % PRESET_COUNT;
-            if(presetHasAnimations(nextPreset)) break;
-        }
-        presetProp.set(String(nextPreset));
+        cycleToNextPreset();
     }
 
 #ifdef HAS_GPIO_CONTROLS
-    // GPIO preset buttons: pull low to select
-    for(int i = 0; i < PRESET_COUNT; i++)
+    // GPIO direct preset buttons: pull low to select that preset
+    for(int i = 0; i < DIRECT_PRESET_PIN_COUNT; i++)
     {
         if(digitalRead(presetPins[i]) == LOW && localPrefs.currentPresetIndex != i)
         {
             presetProp.set(String(i));
         }
+    }
+
+    // GPIO cycle button: same behavior as built-in button
+    bool cyclePinNow = (digitalRead(CYCLE_PIN) == LOW);
+    if(cyclePinNow && !cyclePinPressed)
+    {
+        cyclePinPressed = true;
+        cyclePinPressedAt = millis();
+        cyclePinLongPressHandled = false;
+    }
+    if(cyclePinPressed && !cyclePinLongPressHandled && (millis() - cyclePinPressedAt) > 600)
+    {
+        cyclePinLongPressHandled = true;
+        toggleMode();
+    }
+    if(!cyclePinNow && cyclePinPressed)
+    {
+        cyclePinPressed = false;
+        if(!cyclePinLongPressHandled) cycleToNextPreset();
     }
 
     // GPIO enable pin: pull low = force off, floating/high = normal operation
