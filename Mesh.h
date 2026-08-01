@@ -5,6 +5,8 @@
 #include <esp_wifi.h>
 #include <OverAnimate.h>
 #include "ShinyTypes.h"
+#include "Codecs.h"
+#include "BeatDetector.h"
 #include "Util.h"
 
 // Device-to-device sync over ESP-NOW: connectionless 250-byte broadcasts on a
@@ -17,9 +19,12 @@
 #define kMeshChannel 1
 #define kMeshVersion 1
 
+static const uint8_t kBroadcastAddr[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
 enum MeshFrameType : uint8_t
 {
     MeshFrameBeat = 1,
+    MeshFramePreset = 2,
 };
 
 #define kMeshFlagHasMic 1
@@ -38,12 +43,37 @@ struct __attribute__((packed)) MeshBeatFrame
     uint8_t color[3];   // sender's layer 0 mainColor
 };
 
+// A neighbor's current preset, one non-empty layer per entry. Ten of these
+// plus the header still fit one 250-byte ESP-NOW frame.
+struct __attribute__((packed)) MeshPresetLayer
+{
+    uint8_t layer;
+    uint8_t animation;  // index into animationNames; only valid same-version
+    uint8_t blendMode;
+    uint8_t beatSync;
+    uint8_t color1[3];
+    uint8_t color2[3];
+    float speed;
+    float tau;
+    float phi;
+};
+
+struct __attribute__((packed)) MeshPresetFrame
+{
+    uint8_t version;
+    uint8_t type;
+    uint8_t layerCount;
+    MeshPresetLayer layers[LAYER_COUNT]; // only layerCount are sent
+};
+
 struct MeshNeighbor
 {
     bool used = false;
     uint8_t mac[6];
     TimeInterval sinceBeat = 0;
     MeshBeatFrame beat = {};
+    bool hasPreset = false;
+    ShinyLayerSettings preset[LAYER_COUNT]; // decoded; unsent layers stay default (Nothing)
 };
 
 class Mesh
@@ -123,6 +153,21 @@ public:
             sendBeat();
         }
 
+        // Share our current preset: when it changes and has settled for 1s
+        // (a slider drag becomes one frame), plus a slow refresh for latecomers
+        _sincePresetTx += delta;
+        if(memcmp(_seenPreset, localPrefs.layers, sizeof(_seenPreset)) != 0)
+        {
+            memcpy(_seenPreset, localPrefs.layers, sizeof(_seenPreset));
+            _sincePresetChange = 0;
+        }
+        else _sincePresetChange += delta;
+        bool unsent = memcmp(_sentPreset, localPrefs.layers, sizeof(_sentPreset)) != 0;
+        if((unsent && _sincePresetChange > 1.0) || _sincePresetTx > 5.0)
+        {
+            sendPreset();
+        }
+
         if(kDebugMesh)
         {
             _sinceDebugPrint += delta;
@@ -161,9 +206,38 @@ private:
         frame.color[1] = localPrefs.layers[0].mainColor.g;
         frame.color[2] = localPrefs.layers[0].mainColor.b;
 
-        static const uint8_t broadcastAddr[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
         _txCount++;
-        if(esp_now_send(broadcastAddr, (const uint8_t*)&frame, sizeof(frame)) != ESP_OK)
+        if(esp_now_send(kBroadcastAddr, (const uint8_t*)&frame, sizeof(frame)) != ESP_OK)
+        {
+            _txFailCount++;
+        }
+    }
+
+    void sendPreset()
+    {
+        MeshPresetFrame frame = {};
+        frame.version = kMeshVersion;
+        frame.type = MeshFramePreset;
+        for(int i = 0; i < LAYER_COUNT; i++)
+        {
+            const ShinyLayerSettings &l = localPrefs.layers[i];
+            if(l.animationIndex == 0) continue; // Nothing
+            MeshPresetLayer &out = frame.layers[frame.layerCount++];
+            out.layer = i;
+            out.animation = l.animationIndex;
+            out.blendMode = l.blendMode;
+            out.beatSync = l.beatSync;
+            out.color1[0] = l.mainColor.r; out.color1[1] = l.mainColor.g; out.color1[2] = l.mainColor.b;
+            out.color2[0] = l.secondaryColor.r; out.color2[1] = l.secondaryColor.g; out.color2[2] = l.secondaryColor.b;
+            out.speed = l.speed;
+            out.tau = l.p_tau;
+            out.phi = l.p_phi;
+        }
+        size_t size = offsetof(MeshPresetFrame, layers) + frame.layerCount * sizeof(MeshPresetLayer);
+        memcpy(_sentPreset, localPrefs.layers, sizeof(_sentPreset));
+        _sincePresetTx = 0;
+        _txCount++;
+        if(esp_now_send(kBroadcastAddr, (const uint8_t*)&frame, size) != ESP_OK)
         {
             _txFailCount++;
         }
@@ -177,7 +251,39 @@ private:
             case MeshFrameBeat:
                 if(len == sizeof(MeshBeatFrame)) handleBeat(mac, *(const MeshBeatFrame*)data);
                 break;
+            case MeshFramePreset:
+                handlePreset(mac, data, len);
+                break;
         }
+    }
+
+    void handlePreset(const uint8_t *mac, const uint8_t *data, int len)
+    {
+        const MeshPresetFrame *frame = (const MeshPresetFrame*)data;
+        if(len < (int)offsetof(MeshPresetFrame, layers)) return;
+        if(frame->layerCount > LAYER_COUNT) return;
+        if(len != (int)(offsetof(MeshPresetFrame, layers) + frame->layerCount * sizeof(MeshPresetLayer))) return;
+
+        MeshNeighbor *n = upsertNeighbor(mac);
+        if(!n) return;
+
+        // decode with hostile-input clamps: anyone can broadcast ESP-NOW frames
+        for(int i = 0; i < LAYER_COUNT; i++) n->preset[i] = ShinyLayerSettings();
+        for(int i = 0; i < frame->layerCount; i++)
+        {
+            const MeshPresetLayer &in = frame->layers[i];
+            if(in.layer >= LAYER_COUNT) continue;
+            ShinyLayerSettings &l = n->preset[in.layer];
+            l.animationIndex = in.animation < (int)animationNames.size() ? in.animation : 0;
+            l.blendMode = in.blendMode < BlendModeCount ? (LayerBlendMode)in.blendMode : BlendModeAdd;
+            l.beatSync = in.beatSync ? 1 : 0;
+            l.mainColor = CRGB(in.color1[0], in.color1[1], in.color1[2]);
+            l.secondaryColor = CRGB(in.color2[0], in.color2[1], in.color2[2]);
+            l.speed = isfinite(in.speed) ? clampTo(in.speed, 0.001f, 100.0f) : 1.0f;
+            l.p_tau = isfinite(in.tau) ? clampTo(in.tau, -100.0f, 100.0f) : 10.0f;
+            l.p_phi = isfinite(in.phi) ? clampTo(in.phi, -100.0f, 100.0f) : 4.0f;
+        }
+        n->hasPreset = true;
     }
 
     void handleBeat(const uint8_t *mac, const MeshBeatFrame &beat)
@@ -311,6 +417,10 @@ private:
     static Mesh *_instance;
     bool _running = false;
     uint8_t _mac[6] = {0};
+    ShinyLayerSettings _seenPreset[LAYER_COUNT];
+    ShinyLayerSettings _sentPreset[LAYER_COUNT];
+    TimeInterval _sincePresetChange = 0;
+    TimeInterval _sincePresetTx = 0;
     bool _following = false;
     uint8_t _leaderMac[6] = {0};
     RxFrame _rxRing[kRxRingSize];
