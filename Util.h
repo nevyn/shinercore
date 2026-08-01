@@ -31,15 +31,4 @@ inline float curve(float progress)
     return sin((progress-0.25)*6.28f)/2.0f + 0.5f;
 }
 
-inline CRGB rgbFromString(const String &str)
-{
-    int firstSpace = str.indexOf(' ');
-    int secondSpace = str.lastIndexOf(' ');
-    return CRGB(
-        str.substring(0, firstSpace).toInt(), 
-        str.substring(firstSpace+1, secondSpace).toInt(),
-        str.substring(secondSpace+1, str.length()).toInt()
-    );
-}
-
 #endif

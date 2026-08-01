@@ -45,8 +45,6 @@ LayerAnimation layerAnimations[LAYER_COUNT] = {
 
 ////// Communication things
 #include "StoredProperty.h"
-int StoredMultiProperty::currentLayer = 0;
-int StoredMultiProperty::currentPreset = 0;
 #include "Migration.h"
 #include "Comms.h"
 
@@ -170,30 +168,6 @@ void applyDerivedState()
     }
 }
 
-void setPreset(int newPreset)
-{
-    localPrefs.currentPresetIndex = newPreset;
-    StoredMultiProperty::usePreset(newPreset);
-
-    // reload all layer settings from NVS for this preset
-    for(const auto& prop: layerProps)
-    {
-        prop->load();
-    }
-}
-
-void setLayer(int newLayer)
-{
-    localPrefs.currentLayerIndex = newLayer;
-    StoredMultiProperty::useLayer(newLayer);
-
-    // re-publish values at this layer to bluetooth so app sees them, hopefully
-    for(const auto& prop: layerProps)
-    {
-        prop->writeToChara();
-    }
-}
-
 bool presetHasAnimations(int presetIndex)
 {
     for(int layer = 0; layer < LAYER_COUNT; layer++)
@@ -212,13 +186,12 @@ void cycleToNextPreset()
         nextPreset = (nextPreset + 1) % PRESET_COUNT;
         if(presetHasAnimations(nextPreset)) break;
     }
-    presetProp.set(String(nextPreset));
+    presetProp.set(nextPreset);
 }
 
 void toggleMode()
 {
-    RunMode newMode = (RunMode)(!localPrefs.mode);
-    modeProp.set(String((int)newMode));
+    modeProp.set(localPrefs.mode == Off ? On : Off);
 }
 
 bool builtinLongPressHandled = false;
@@ -253,7 +226,7 @@ void update(void)
     {
         if(digitalRead(presetPins[i]) == LOW && localPrefs.currentPresetIndex != i)
         {
-            presetProp.set(String(i));
+            presetProp.set(i);
         }
     }
 
@@ -281,12 +254,12 @@ void update(void)
     if(enablePulledLow && !enablePinOverride)
     {
         enablePinOverride = true;
-        modeProp.set("0");
+        modeProp.set(Off);
     }
     else if(!enablePulledLow && enablePinOverride)
     {
         enablePinOverride = false;
-        modeProp.set("1");
+        modeProp.set(On);
     }
 #endif
 }

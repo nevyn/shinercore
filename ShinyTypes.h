@@ -46,19 +46,18 @@ enum LedColorOrder
 };
 extern std::vector<String> ledColorOrderNames;
 
+// These initializers are the defaults, everywhere: what a property reverts to
+// on an empty write, and what an unstored key reads as.
 struct ShinyLayerSettings
 {
     CRGB mainColor = CRGB(255, 100, 0);
     CRGB secondaryColor = CRGB(240, 255, 0);
     LayerBlendMode blendMode = BlendModeAdd;
-    float speed = 2.0;
+    float speed = 1.0;
     float p_tau = 10.0;
     float p_phi = 4.0;
     int animationIndex = 0;
 };
-
-void setLayer(int newLayer);
-void setPreset(int newPreset);
 
 // NVS key for a per-layer setting. Preset 0 uses the unsuffixed form that the
 // pre-preset firmware wrote, so upgrading a core keeps its settings.

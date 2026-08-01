@@ -24,78 +24,61 @@ String buildDocumentationJSON() {
     return json;
 }
 
-// global settings
-StoredProperty modeProp("70d4cabe-82cc-470a-a572-95c23f1316ff", "mode", "1", "0,1", [](const String &newValue) {
-    localPrefs.mode = newValue.toInt() == 0 ? Off : On;
-});
-StoredProperty brightnessProp("2B01", "brightness", "255", "0-255", [](const String &newValue) {
-    localPrefs.brightness = constrain(newValue.toInt(), 0, 255);
-});
-StoredProperty nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", "unknown", "", [](const String &newValue) {
-    ownerName = newValue;
-});
-StoredProperty layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "layer", "0", "", [](const String &newValue) {
-    setLayer(constrain(newValue.toInt(), 0, LAYER_COUNT-1));
-});
-StoredProperty presetProp("8b989f5e-3d22-4377-80c9-c54eeb459518", "preset", "0", "0,4", [](const String &newValue) {
-    setPreset(constrain(newValue.toInt(), 0, PRESET_COUNT-1));
-});
-StoredProperty ledCountProp("f5c67dcb-8798-4818-901f-cff9917d1a62", "ledCount", "400", "0-800", [](const String &newValue) {
-    localPrefs.ledCount = constrain(newValue.toInt(), 0, MAX_LED_COUNT);
-});
-StoredProperty ledColorOrderProp("f3b7c8a1-5d2e-4f19-8c6a-9e1d0b2c3a4f", "ledColorOrder", "GRB", "", [](const String &newValue) {
-    std::vector<String>::iterator it = std::find(ledColorOrderNames.begin(), ledColorOrderNames.end(), newValue);
-    LedColorOrder order = (it != ledColorOrderNames.end())
-        ? (LedColorOrder)std::distance(ledColorOrderNames.begin(), it)
-        : LedOrderGRB;
+// Defaults are the ShinySettings/ShinyLayerSettings initializers; ranges are
+// enforced on write. The layer and preset properties are the cursor that
+// selects which layer the per-layer characteristics address.
+void loadLayers();
+void republishLayers();
 
-    localPrefs.ledColorOrder = order;
-});
+// global settings
+GlobalProperty<RunMode> modeProp("70d4cabe-82cc-470a-a572-95c23f1316ff", "mode", &localPrefs.mode, Off, On);
+GlobalProperty<int> brightnessProp("2B01", "brightness", &localPrefs.brightness, 0, 255);
+GlobalProperty<String> nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", &ownerName);
+GlobalProperty<int> layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "layer", &localPrefs.currentLayerIndex, 0, LAYER_COUNT-1, republishLayers);
+GlobalProperty<int> presetProp("8b989f5e-3d22-4377-80c9-c54eeb459518", "preset", &localPrefs.currentPresetIndex, 0, PRESET_COUNT-1, loadLayers);
+GlobalProperty<int> ledCountProp("f5c67dcb-8798-4818-901f-cff9917d1a62", "ledCount", &localPrefs.ledCount, 0, MAX_LED_COUNT);
+GlobalProperty<LedColorOrder> ledColorOrderProp("f3b7c8a1-5d2e-4f19-8c6a-9e1d0b2c3a4f", "ledColorOrder", &localPrefs.ledColorOrder);
 
 // per-layer settings
-StoredMultiProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "1.0", "0.0,100.0", [](const String &newValue) {
-    localPrefs.layers[StoredMultiProperty::getLayer()].speed = newValue.toFloat();
-});
-StoredMultiProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color1", "255 100 0", "0 0 0,255 255 255", [](const String &newValue) {
-    localPrefs.layers[StoredMultiProperty::getLayer()].mainColor = rgbFromString(newValue);
-});
-StoredMultiProperty color2Prop("83595a76-1b17-4158-bcee-e702c3165caf", "color2", "240 255 0", "0 0 0,255 255 255", [](const String &newValue) {
-    localPrefs.layers[StoredMultiProperty::getLayer()].secondaryColor = rgbFromString(newValue);
-});
+LayerProperty<float> speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", &ShinyLayerSettings::speed, 0.001f, 100.0f);
+LayerProperty<CRGB> colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color1", &ShinyLayerSettings::mainColor);
+LayerProperty<CRGB> color2Prop("83595a76-1b17-4158-bcee-e702c3165caf", "color2", &ShinyLayerSettings::secondaryColor);
+LayerProperty<float> tauProp("d879c81a-09f0-4a24-a66c-cebf358bb97a", "tau", &ShinyLayerSettings::p_tau, -100.0f, 100.0f);
+LayerProperty<float> phiProp("df6f0905-09bd-4bf6-b6f5-45b5a4d20d52", "phi", &ShinyLayerSettings::p_phi, -100.0f, 100.0f);
+LayerProperty<LayerBlendMode> blendModeProp("03686c5c-6e6f-44f0-943f-db6388d9fdd4", "blendMode", &ShinyLayerSettings::blendMode);
+LayerProperty<int, AnimationCodec> animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", &ShinyLayerSettings::animationIndex);
 
-StoredMultiProperty tauProp("d879c81a-09f0-4a24-a66c-cebf358bb97a", "tau", "10.0", "-100.0,100.0", [](const String &newValue) {
-    localPrefs.layers[StoredMultiProperty::getLayer()].p_tau = newValue.toFloat();
-});
-StoredMultiProperty phiProp("df6f0905-09bd-4bf6-b6f5-45b5a4d20d52", "phi", "4.0", "-100.0,100.0", [](const String &newValue) {
-    localPrefs.layers[StoredMultiProperty::getLayer()].p_phi = newValue.toFloat();
-});
-
-StoredMultiProperty blendModeProp("03686c5c-6e6f-44f0-943f-db6388d9fdd4", "blendMode", "Add", "", [](const String &newValue) {
-    std::vector<String>::iterator it = std::find(blendModeNames.begin(), blendModeNames.end(), newValue);
-    LayerBlendMode mode = (it != blendModeNames.end())
-        ? (LayerBlendMode)std::distance(blendModeNames.begin(), it)
-        : BlendModeAdd;
-
-    localPrefs.layers[StoredMultiProperty::getLayer()].blendMode = mode;
-});
-
-StoredMultiProperty animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", "Nothing", "", [](const String &newValue) {
-    std::vector<String>::iterator it = std::find(animationNames.begin(), animationNames.end(), newValue);
-    int animationIndex = (it != animationNames.end())
-        ? std::distance(animationNames.begin(), it)
-        : constrain(newValue.toInt(), 0, animationNames.size()-1);
-
-    localPrefs.layers[StoredMultiProperty::getLayer()].animationIndex = animationIndex;
-});
-std::vector<StoredProperty*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &presetProp, &ledColorOrderProp, &ledCountProp};
-std::vector<StoredProperty*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp};
-std::vector<StoredProperty*> props = [&] {
-    std::vector<StoredProperty*> v;
+std::vector<GlobalPropertyBase*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &presetProp, &ledColorOrderProp, &ledCountProp};
+std::vector<LayerPropertyBase*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp};
+std::vector<Property*> props = [&] {
+    std::vector<Property*> v;
     v.reserve(globalProps.size() + layerProps.size());
     v.insert(v.end(), globalProps.begin(), globalProps.end());
     v.insert(v.end(), layerProps.begin(), layerProps.end());
     return v;
 }();
+
+// Pull every layer of the current preset out of NVS into localPrefs, and
+// republish the cursor layer's values to bluetooth
+void loadLayers()
+{
+    for(const auto& prop: layerProps)
+    {
+        for(int layer = 0; layer < LAYER_COUNT; layer++)
+        {
+            prop->load(layer, localPrefs.currentPresetIndex);
+        }
+        prop->republish();
+    }
+}
+
+void republishLayers()
+{
+    for(const auto& prop: layerProps)
+    {
+        prop->republish();
+    }
+}
 
 class RemoteCore
 {
@@ -197,8 +180,12 @@ void commsSetup(void)
 
     for(const auto& prop: props)
     {
-        prop->load();
         prop->advertise(shinerService);
+    }
+    // presetProp's load pulls in every layer's settings via its loadLayers hook
+    for(const auto& prop: globalProps)
+    {
+        prop->load();
     }
 
     // Add documentation characteristic (read-only, not stored)
