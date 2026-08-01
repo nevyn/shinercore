@@ -268,7 +268,7 @@ void commsUpdate(TimeInterval delta)
         }
     }
 
-    for(auto it = remoteCores.begin(); it != remoteCores.end(); ++it)
+    for(auto it = remoteCores.begin(); it != remoteCores.end();)
     {
         RemoteCore *remoteCore = *it;
         if(remoteCore->connected)
@@ -277,12 +277,15 @@ void commsUpdate(TimeInterval delta)
             if(!remoteCore->device.connected())
             {
                 logger.printf("Lost connection to %s.\n", remoteCore->device.localName().c_str());
+                delete remoteCore;
                 it = remoteCores.erase(it);
+                continue;
             }
         }
         else
         {
             remoteCore->elapseDelta(delta);
         }
+        ++it;
     }
 }
