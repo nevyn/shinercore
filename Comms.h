@@ -39,6 +39,7 @@ GlobalProperty<int> presetProp("8b989f5e-3d22-4377-80c9-c54eeb459518", "preset",
 GlobalProperty<int> ledCountProp("f5c67dcb-8798-4818-901f-cff9917d1a62", "ledCount", &localPrefs.ledCount, 0, MAX_LED_COUNT);
 GlobalProperty<LedColorOrder> ledColorOrderProp("f3b7c8a1-5d2e-4f19-8c6a-9e1d0b2c3a4f", "ledColorOrder", &localPrefs.ledColorOrder);
 GlobalProperty<int> micProp("519f61ae-bb92-425f-90fa-29aabc63520d", "mic", &localPrefs.micEnabled, 0, 1);
+GlobalProperty<int> meshProp("808fb660-9eba-45c2-862c-be18a55195ed", "mesh", &localPrefs.meshEnabled, 0, 1);
 
 // per-layer settings
 LayerProperty<float> speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", &ShinyLayerSettings::speed, 0.001f, 100.0f);
@@ -50,7 +51,7 @@ LayerProperty<LayerBlendMode> blendModeProp("03686c5c-6e6f-44f0-943f-db6388d9fdd
 LayerProperty<int, AnimationCodec> animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", &ShinyLayerSettings::animationIndex);
 LayerProperty<int> beatSyncProp("6f97efc2-096e-4704-9feb-f9c2f41577ee", "beatSync", &ShinyLayerSettings::beatSync, 0, 1);
 
-std::vector<GlobalPropertyBase*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &presetProp, &ledColorOrderProp, &ledCountProp, &micProp};
+std::vector<GlobalPropertyBase*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &presetProp, &ledColorOrderProp, &ledCountProp, &micProp, &meshProp};
 std::vector<LayerPropertyBase*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp, &beatSyncProp};
 std::vector<Property*> props = [&] {
     std::vector<Property*> v;
@@ -228,6 +229,14 @@ void remoteCoreFound(BLEDevice foundDevice)
 void commsUpdate(TimeInterval delta)
 {
     BLE.poll();
+
+    static bool centralWasConnected = false;
+    BLEDevice central = BLE.central();
+    if((bool)central != centralWasConnected)
+    {
+        centralWasConnected = central;
+        logger.print("app "); logger.println(central ? "connected" : "disconnected");
+    }
 
     for(const auto& prop: props)
     {

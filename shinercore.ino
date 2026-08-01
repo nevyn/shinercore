@@ -52,6 +52,9 @@ LayerAnimation layerAnimations[LAYER_COUNT] = {
 #include "StoredProperty.h"
 #include "Migration.h"
 #include "Comms.h"
+#include "Mesh.h"
+Mesh mesh;
+Mesh *Mesh::_instance = nullptr;
 
 
 
@@ -159,6 +162,7 @@ void loop(void) {
     commsUpdate(delta);
     applyDerivedState(delta);
     beats.update(delta);
+    mesh.update(delta);
 
     ledstrip.fill(CRGB::Black); // TODO: clear with layer 0 instead, to allow feedback patterns
     ansys.playElapsedTime(delta);
@@ -238,6 +242,8 @@ void applyDerivedState(TimeInterval dt)
 
     if(localPrefs.micEnabled && !beats.running()) beats.begin();
     else if(!localPrefs.micEnabled && beats.running()) beats.end();
+    if(localPrefs.meshEnabled && !mesh.running()) mesh.begin();
+    else if(!localPrefs.meshEnabled && mesh.running()) mesh.end();
 }
 
 bool presetHasAnimations(int presetIndex)
