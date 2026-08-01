@@ -1,20 +1,12 @@
 #include "LayerAnimation.h"
 #include "Animations.h"
 
-void LayerAnimation::animate(float fraction) 
+void LayerAnimation::animate(float fraction)
 {
-    // if we wrap over to 0, assume another full second has passed
-    if(fraction < _lastFraction)
-    {
-        _accumulated += 1.0;
-    }
-    _lastFraction = fraction;
-    TimeInterval absoluteTime = _accumulated + fraction;
-
     if(prefs->animationIndex == 0) return; // Nothing: skip the fill and blend entirely
 
     backbuffer->fill(CRGB::Black);
-    animationFuncs[prefs->animationIndex](this, absoluteTime);
+    animationFuncs[prefs->animationIndex](this, time);
 
     for(int i = 0; i < frontbuffer->numPixels(); i++)
     {
