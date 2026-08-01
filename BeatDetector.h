@@ -130,6 +130,7 @@ private:
     static const int kRetempoVotes = 3;              // consecutive disagreeing onsets before snapping tempo
     static constexpr float kConfidentThreshold = 0.4f; // above this, the grid drives the envelope
     static constexpr float kConfidenceDecay = 20.0f; // seconds; the grid outlives a breakdown
+    static constexpr float kOnsetLatency = 0.06f;    // seconds detection lags the sound; tune by eye against a metronome
 
     static const bool kDebugAudio = true;            // serial meter for bring-up
 
@@ -235,8 +236,14 @@ private:
             }
         }
 
-        // phase evidence: an onset near a predicted beat pulls the grid into lock
-        float err = _beatPhase < 0.5f ? _beatPhase : _beatPhase - 1.0f; // signed beats from nearest gridline
+        // Phase evidence: an onset near a predicted beat pulls the grid into
+        // lock. Detection runs kOnsetLatency behind the actual sound (attack
+        // ramp, chunking, queueing), so onsets are expected to land that far
+        // AFTER the gridline - which parks the gridline itself, and everything
+        // driven by it, on the true beat.
+        float expected = kOnsetLatency / _period;
+        float raw = _beatPhase - expected;
+        float err = raw - roundf(raw); // signed beats from the expected landing spot
         if(fabsf(err) < kPhaseWindow)
         {
             _beatPhase -= err * kPhaseGain;
