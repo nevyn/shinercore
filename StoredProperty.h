@@ -135,13 +135,7 @@ protected:
     static int currentPreset;
     virtual String currentKey()
     {
-        // Preset 0 uses the old key format ("speed-0") for backwards compat
-        // with devices that already have stored settings from before presets existed
-        String k = key + "-" + String(currentLayer);
-        if (currentPreset > 0) {
-            k += "-" + String(currentPreset);
-        }
-        return k;
+        return layerKey(key, currentLayer, currentPreset);
     }
 
     // TODO:

@@ -45,8 +45,9 @@ LayerAnimation layerAnimations[LAYER_COUNT] = {
 
 ////// Communication things
 #include "StoredProperty.h"
-int StoredMultiProperty::currentLayer = 1;
+int StoredMultiProperty::currentLayer = 0;
 int StoredMultiProperty::currentPreset = 0;
+#include "Migration.h"
 #include "Comms.h"
 
 
@@ -97,10 +98,6 @@ void setup(void) {
     Serial.begin(115200);
 
     M5.update();
-    if(M5.BtnA.isHolding()) {
-        logger.println("CLEARING SETTINGS DUE TO BUTTON HELD\n");
-        prefs.clear();   
-    }
 
     FastLED.addLeds<WS2811, GROVE1_PIN, RGB>(rgbs, MAX_LED_COUNT);
     FastLED.addLeds<WS2811, GROVE2_PIN, RGB>(rgbs, MAX_LED_COUNT);
@@ -198,9 +195,7 @@ bool presetHasAnimations(int presetIndex)
 {
     for(int layer = 0; layer < LAYER_COUNT; layer++)
     {
-        String key = "animation-" + String(layer);
-        if(presetIndex > 0) key += "-" + String(presetIndex);
-        String val = prefs.getString(key.c_str(), "Nothing");
+        String val = prefs.getString(layerKey("animation", layer, presetIndex).c_str(), "Nothing");
         if(val != "Nothing") return true;
     }
     return false;

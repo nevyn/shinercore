@@ -61,11 +61,15 @@ struct ShinyLayerSettings
 void setLayer(int newLayer);
 void setPreset(int newPreset);
 
+// NVS key for a per-layer setting. Preset 0 uses the unsuffixed form that the
+// pre-preset firmware wrote, so upgrading a core keeps its settings.
+String layerKey(const String &key, int layer, int preset);
+
 struct ShinySettings
 {
     RunMode mode;
     ShinyLayerSettings layers[LAYER_COUNT];
-    int currentLayerIndex = 1;
+    int currentLayerIndex = 0;
     int currentPresetIndex = 0;
     LedColorOrder ledColorOrder = LedOrderGRB;
     int ledCount = MAX_LED_COUNT/2;

@@ -34,7 +34,7 @@ StoredProperty brightnessProp("2B01", "brightness", "255", "0-255", [](const Str
 StoredProperty nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", "unknown", "", [](const String &newValue) {
     ownerName = newValue;
 });
-StoredProperty layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "layer", "1", "", [](const String &newValue) {
+StoredProperty layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "layer", "0", "", [](const String &newValue) {
     setLayer(constrain(newValue.toInt(), 0, LAYER_COUNT-1));
 });
 StoredProperty presetProp("8b989f5e-3d22-4377-80c9-c54eeb459518", "preset", "0", "0,4", [](const String &newValue) {
@@ -186,6 +186,13 @@ void commsSetup(void)
         logger.println("failed to read preferences!");
         while (1);
     }
+
+    if(M5.BtnA.isHolding()) {
+        logger.println("CLEARING SETTINGS DUE TO BUTTON HELD\n");
+        prefs.clear();
+    }
+
+    migrateSettings();
 
     if (!BLE.begin()) {
         logger.println("starting Bluetooth® Low Energy module failed!");
