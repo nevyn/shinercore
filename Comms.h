@@ -48,9 +48,10 @@ LayerProperty<float> tauProp("d879c81a-09f0-4a24-a66c-cebf358bb97a", "tau", &Shi
 LayerProperty<float> phiProp("df6f0905-09bd-4bf6-b6f5-45b5a4d20d52", "phi", &ShinyLayerSettings::p_phi, -100.0f, 100.0f);
 LayerProperty<LayerBlendMode> blendModeProp("03686c5c-6e6f-44f0-943f-db6388d9fdd4", "blendMode", &ShinyLayerSettings::blendMode);
 LayerProperty<int, AnimationCodec> animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", &ShinyLayerSettings::animationIndex);
+LayerProperty<int> beatSyncProp("6f97efc2-096e-4704-9feb-f9c2f41577ee", "beatSync", &ShinyLayerSettings::beatSync, 0, 1);
 
 std::vector<GlobalPropertyBase*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &presetProp, &ledColorOrderProp, &ledCountProp, &micProp};
-std::vector<LayerPropertyBase*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp};
+std::vector<LayerPropertyBase*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp, &beatSyncProp};
 std::vector<Property*> props = [&] {
     std::vector<Property*> v;
     v.reserve(globalProps.size() + layerProps.size());

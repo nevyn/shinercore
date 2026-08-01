@@ -57,6 +57,10 @@ struct ShinyLayerSettings
     float p_tau = 10.0;
     float p_phi = 4.0;
     int animationIndex = 0;
+    // When set, speed changes unit from seconds per cycle to beats per cycle,
+    // and the animation phase-locks to the beat grid: 1 = a cycle per beat,
+    // 4 = a cycle per bar, 0.5 = twice per beat.
+    int beatSync = 0;
 };
 
 // NVS key for a per-layer setting. Preset 0 uses the unsuffixed form that the

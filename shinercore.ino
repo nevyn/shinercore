@@ -173,6 +173,7 @@ void loop(void) {
 
 // Exponential approach: how far to move toward a target this frame
 static const float kSettingsSlewTime = 0.2; // seconds to cover ~63% of a change
+static const float kBeatChaseGain = 2.0f;   // rate boost per cycle of beat-phase error
 static float slew(float current, float target, float alpha)
 {
     return current + (target - current) * alpha;
@@ -215,7 +216,24 @@ void applyDerivedState(TimeInterval dt)
         shown.p_phi = slew(shown.p_phi, target.p_phi, alpha);
         shown.blendMode = target.blendMode;
         shown.animationIndex = target.animationIndex;
-        layerAnimations[i].duration = shown.speed;
+        shown.beatSync = target.beatSync;
+
+        if(shown.beatSync)
+        {
+            // speed is beats per cycle: phase-lock the animation to the beat
+            // grid by modulating its playback rate toward where the cycle
+            // should be, wrapped to the nearest cycle so tempo corrections and
+            // toggling sync mid-flight glide over at most half a cycle.
+            double targetCycles = beats.beatTime() / shown.speed;
+            double err = remainder(targetCycles - layerAnimations[i].time, 1.0);
+            float chase = 1.0f + (float)err * kBeatChaseGain;
+            chase = chase < 0.5f ? 0.5f : chase > 2.0f ? 2.0f : chase;
+            layerAnimations[i].duration = beats.period() * shown.speed / chase;
+        }
+        else
+        {
+            layerAnimations[i].duration = shown.speed; // seconds per cycle
+        }
     }
 
     if(localPrefs.micEnabled && !beats.running()) beats.begin();

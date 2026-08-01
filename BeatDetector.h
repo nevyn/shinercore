@@ -62,6 +62,7 @@ public:
 
         // the beat grid ticks even when the room is quiet
         _beatPhase += delta / _period;
+        _totalBeats += delta / _period;
         if(_beatPhase >= 1.0f)
         {
             _beatPhase -= (int)_beatPhase;
@@ -100,7 +101,11 @@ public:
     float envelope() const { return _envelope; }
     /// Position within the current beat, 0..1, phase-locked to the music.
     float phase() const { return _beatPhase; }
+    /// Beats elapsed since boot, fractional, phase-locked. Can retreat by a
+    /// fraction of a beat on a phase correction; consumers chase, not jump.
+    TimeInterval beatTime() const { return _totalBeats; }
     float bpm() const { return 60.0f / _period; }
+    float period() const { return _period; }
     /// 0..1: how well recent onsets have matched the predicted grid.
     float confidence() const { return _confidence; }
 
@@ -235,6 +240,7 @@ private:
         if(fabsf(err) < kPhaseWindow)
         {
             _beatPhase -= err * kPhaseGain;
+            _totalBeats -= err * kPhaseGain;
             if(_beatPhase < 0) _beatPhase += 1.0f;
             if(_confidence > kConfidentThreshold)
             {
@@ -283,6 +289,7 @@ private:
     TimeInterval _lastOnsetAt = -10;
     float _period = 0.5f;      // seconds per beat; 120bpm until told otherwise
     float _beatPhase = 0;      // 0..1 within the current beat
+    TimeInterval _totalBeats = 0; // double: float would lose beat fractions within a day
     float _confidence = 0;
     float _iois[kIOIRingSize] = {0};
     int _ioiIndex = 0, _ioiCount = 0, _retempoVotes = 0;
