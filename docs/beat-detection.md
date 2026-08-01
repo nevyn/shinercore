@@ -27,16 +27,22 @@ RETEMPO; a peak weaker than 1.5x the score mean is ignored as unrhythmic.
 
 ## Phase layer: onsets pull the grid
 
-Discrete onsets are detected in the kick band only (energy over rolling mean+1.8σ of
-~0.8s, floor rms 120, 256ms refractory) — hats sit on ambiguous half-beats and get no
-phase authority. Onsets within 0.35 beats of a predicted gridline pull the phase;
-within 0.15 they build confidence. Above confidence 0.4 the grid fires the envelope
-instead of raw onsets and freewheels through breakdowns (decay ~20s).
+Discrete onsets are detected in the kick band only (flux over rolling mean+1.8σ of
+~0.8s, energy floor rms 120, 144ms refractory) — hats sit on ambiguous half-beats and
+get no phase authority. An onset candidate pends 3 chunks so its whole attack is
+visible, then its **sharpness** (max single-chunk flux / total rise) becomes its
+phase authority: kicks ~1.0, bass swells ~0.4, so kicks out-vote the minimal-techno
+offbeat bass stab without binary classification. Onsets within 0.35 beats of a
+predicted gridline pull the phase (scaled by sharpness); within 0.15 they build
+confidence. Above confidence 0.4 the grid fires the envelope instead of raw onsets
+and freewheels through breakdowns (decay ~20s).
 
 Guard rails and the failure each fixes:
 
 | rule | failure |
 |---|---|
+| onsets trigger on flux, weighted by attack sharpness measured over the whole pended attack | the offbeat bass stab (minimal techno's signature, plus sidechain pump) carries more sustained low-band energy than the kick; a level detector anti-phase locked every real track onto it, blinking exactly on the hats. Sharpness measured only at threshold crossing fails too: the first chunk of any rise looks sharp |
+| 144ms refractory | at 124bpm a 256ms refractory shadowed the competing offbeat event forever, freezing whichever lock came first |
 | flux smoothing before autocorrelation | beat periods are rarely whole slots; unsmoothed 1-slot spikes miss alignment at integer lags — 140bpm read as 70 |
 | tempo prior | octave choice on uniform trains is a coin flip |
 | confidence reward window 0.15 beats, pull window 0.35 | the pull window covers 70% of a beat, so random room noise landed "on grid" more often than not and kept a phantom grid pulsing; reward must sit below chance level |
@@ -52,8 +58,9 @@ as of 2026-08-02:
 
 | track | result |
 |---|---|
-| 24 beats @100 / @140 | 100.7 / 139.5 |
-| 126bpm with offbeat open hats louder than the kicks | 125.3, conf 0.95 |
+| 24 beats @100 / @140 | 101.9 / 138.6 |
+| 126bpm with offbeat open hats louder than the kicks | 125.4, conf 0.96 |
+| 124bpm, offbeat bass stabs louder than the kick (soft 60ms attack), stabs drop for the last 8 beats | grid locks the kicks (stabs read sharp ~0.4, kicks 1.0), no REPHASE when stabs vanish |
 | 16 beats @124, 10 beats silence, 8 beats | ticks through the gap, re-locks 124.6 |
 | 16 beats @120 then 20 @150 | RETEMPO, locks 149.0 |
 | 20s ambient room | zero GRID fires |

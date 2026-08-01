@@ -120,7 +120,8 @@ private:
     static const int kSampleRate = 16000;
     static const int kChunkSamples = 256;            // 16ms per decision
     static const int kRingSize = 48;                 // ~0.8s of kick-energy history
-    static const int kRefractoryChunks = 16;         // >=256ms between onsets
+    static const int kRefractoryChunks = 9;          // >=144ms between onsets; at 124bpm a 256ms
+                                                     // refractory shadowed the offbeat's competing event forever
     static constexpr float kKickAlpha = 0.050f;      // cascaded one-poles at ~130Hz
     static constexpr float kHighAlpha = 0.325f;      // ~1kHz one-pole; high band = signal minus this
     static constexpr float kSensitivity = 1.8f;      // onset = mean + this many std devs
@@ -149,7 +150,7 @@ private:
     static constexpr float kFreqGain = 0.05f;        // period correction from phase error (2nd PLL order)
     static constexpr float kConfidentThreshold = 0.4f; // above this, the grid drives the envelope
     static constexpr float kConfidenceDecay = 20.0f; // seconds; the grid outlives a breakdown
-    static constexpr float kOnsetLatency = 0.01f;    // seconds detection lags the sound; tune by eye against a metronome
+    static constexpr float kOnsetLatency = 0.00f;    // seconds detection lags the sound; tune by eye against a metronome
 
     static const bool kDebugAudio = true;            // serial meter for bring-up
 
@@ -192,8 +193,12 @@ private:
         }
         _flux[slot % kFluxRing] += strength; // two chunks in one slot both count
 
-        // Discrete onsets in the kick band only: rolling mean/variance...
-        _ring[_ringIndex] = kickEnergy;
+        // Discrete onsets trigger on kick-band FLUX, not level: an offbeat
+        // bass stab carries more sustained low-frequency energy than the kick
+        // (the minimal-techno signature, worsened by sidechain pumping), and a
+        // level detector anti-phase locks the whole grid onto it. The kick's
+        // rise is sharper; flux picks the transient over the swell.
+        _ring[_ringIndex] = kickFlux;
         _ringIndex = (_ringIndex + 1) % kRingSize;
         float mean = 0;
         for(int i = 0; i < kRingSize; i++) mean += _ring[i];
@@ -203,14 +208,36 @@ private:
         var /= kRingSize;
         _meanEnergy = mean;
 
+        // Attack concentration is the onset's phase authority: a kick's rise
+        // fits in one chunk, a bass swell's spreads over several, so kicks
+        // out-vote offbeat stabs without needing perfect classification. The
+        // first chunk of ANY rise looks sharp, so a candidate pends for 3 more
+        // chunks to see its whole attack before being judged; the constant
+        // ~48ms delay folds into kOnsetLatency.
         _chunksSinceOnset++;
-        if(kickEnergy > kEnergyFloor
-            && kickEnergy > mean + kSensitivity * sqrtf(var)
+        if(_pendingChunks < 0
+            && kickEnergy > kEnergyFloor
+            && kickFlux > mean + kSensitivity * sqrtf(var)
             && _chunksSinceOnset >= kRefractoryChunks)
         {
-            _chunksSinceOnset = 0;
-            if(kDebugAudio) Serial.printf("ONSET rms %6.0f over avg %6.0f phase %.2f\n", sqrtf(kickEnergy), sqrtf(mean), _beatPhase);
-            onKickOnset();
+            _pendingChunks = 3;
+            _pendingBase = kickEnergy - kickFlux; // level just before the rise
+            _pendingMaxFlux = kickFlux;
+            _pendingMaxEnergy = kickEnergy;
+            _pendingPhase = _beatPhase;
+        }
+        else if(_pendingChunks >= 0)
+        {
+            _pendingMaxFlux = std::max(_pendingMaxFlux, kickFlux);
+            _pendingMaxEnergy = std::max(_pendingMaxEnergy, kickEnergy);
+            if(--_pendingChunks < 0)
+            {
+                float totalRise = std::max(_pendingMaxEnergy - _pendingBase, 1.0f);
+                float sharpness = std::min(1.0f, _pendingMaxFlux / totalRise);
+                _chunksSinceOnset = 0;
+                if(kDebugAudio) Serial.printf("ONSET rms %6.0f sharp %.2f phase %.2f\n", sqrtf(_pendingMaxEnergy), sharpness, _pendingPhase);
+                onKickOnset(sharpness, _pendingPhase);
+            }
         }
     }
 
@@ -326,7 +353,7 @@ private:
         }
     }
 
-    void onKickOnset()
+    void onKickOnset(float sharpness, float phaseAtOnset)
     {
         // Until the grid is trustworthy, raw onsets drive the visuals
         if(_confidence <= kConfidentThreshold) _envelope = 1.0f;
@@ -337,27 +364,29 @@ private:
         // AFTER the gridline - which parks the gridline itself, and everything
         // driven by it, on the true beat.
         float expected = kOnsetLatency / _period;
-        float raw = _beatPhase - expected;
+        float raw = phaseAtOnset - expected;
         float err = raw - roundf(raw); // signed beats from the expected landing spot
         if(fabsf(err) < kPhaseWindow)
         {
             _offGridStreak = 0;
-            _beatPhase -= err * kPhaseGain;
-            _totalBeats -= err * kPhaseGain;
+            _beatPhase -= err * kPhaseGain * sharpness;
+            _totalBeats -= err * kPhaseGain * sharpness;
             if(_beatPhase < 0) _beatPhase += 1.0f;
             if(_confidence > kConfidentThreshold)
             {
                 // Onsets consistently landing on the same side of the gridline
                 // mean the period itself is off; without this, a wrong period
                 // can chase the phase forever while staying "confident"
-                _period = std::min(1.2f, std::max(0.2f, _period * (1.0f + err * kFreqGain)));
+                _period = std::min(1.2f, std::max(0.2f, _period * (1.0f + err * kFreqGain * sharpness)));
             }
         }
-        else if(++_offGridStreak >= 4)
+        else if(sharpness > 0.6f && ++_offGridStreak >= 4)
         {
-            // A run of onsets the pull window can't reach means the grid, not
-            // the music, is wrong - a half-beat-offset lock is otherwise a
-            // stable fixpoint (onsets at phase 0.5 forever, confidence starved)
+            // A run of sharp onsets the pull window can't reach means the
+            // grid, not the music, is wrong - a half-beat-offset lock is
+            // otherwise a stable fixpoint (kicks at phase 0.5 forever,
+            // confidence starved). Soft onsets don't count: an offbeat bass
+            // swell must not re-anchor the grid onto itself.
             _offGridStreak = 0;
             if(kDebugAudio) Serial.printf("REPHASE err %.2f\n", err);
             _beatPhase -= err;
@@ -367,14 +396,16 @@ private:
         }
         // Confidence only rewards onsets much closer to the grid than chance
         // (the reward window covers 30% of the beat), so sporadic room noise
-        // nets negative and can't keep a phantom grid pulsing.
+        // nets negative and can't keep a phantom grid pulsing. Both reward and
+        // penalty scale with sharpness: soft events shouldn't build a lock or
+        // drain one.
         if(fabsf(err) < kConfidenceWindow)
         {
-            _confidence = std::min(1.0f, _confidence + 0.15f * (1.0f - fabsf(err) / kConfidenceWindow));
+            _confidence = std::min(1.0f, _confidence + 0.15f * sharpness * (1.0f - fabsf(err) / kConfidenceWindow));
         }
         else
         {
-            _confidence = std::max(0.0f, _confidence - 0.05f);
+            _confidence = std::max(0.0f, _confidence - 0.05f * sharpness);
         }
     }
 
@@ -394,6 +425,9 @@ private:
     int _ringIndex = 0;
     int _chunksSinceOnset = 0;
     int _offGridStreak = 0;
+    int _pendingChunks = -1;   // -1: no onset candidate in flight
+    float _pendingBase = 0, _pendingMaxFlux = 0, _pendingMaxEnergy = 0;
+    float _pendingPhase = 0;
     float _lastEnergy = 0, _meanEnergy = 0;
     float _envelope = 0;
 
