@@ -26,10 +26,10 @@ String buildDocumentationJSON() {
 
 // global settings
 StoredProperty modeProp("70d4cabe-82cc-470a-a572-95c23f1316ff", "mode", "1", "0,1", [](const String &newValue) {
-    setMode((RunMode)newValue.toInt());
+    localPrefs.mode = newValue.toInt() == 0 ? Off : On;
 });
 StoredProperty brightnessProp("2B01", "brightness", "255", "0-255", [](const String &newValue) {
-    FastLED.setBrightness(newValue.toInt());
+    localPrefs.brightness = constrain(newValue.toInt(), 0, 255);
 });
 StoredProperty nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", "unknown", "", [](const String &newValue) {
     ownerName = newValue;
@@ -42,8 +42,6 @@ StoredProperty presetProp("8b989f5e-3d22-4377-80c9-c54eeb459518", "preset", "0",
 });
 StoredProperty ledCountProp("f5c67dcb-8798-4818-901f-cff9917d1a62", "ledCount", "400", "0-800", [](const String &newValue) {
     localPrefs.ledCount = constrain(newValue.toInt(), 0, MAX_LED_COUNT);
-    ledstrip.setNumPixels(localPrefs.ledCount);
-    backbuffer.setNumPixels(localPrefs.ledCount);
 });
 StoredProperty ledColorOrderProp("f3b7c8a1-5d2e-4f19-8c6a-9e1d0b2c3a4f", "ledColorOrder", "GRB", "", [](const String &newValue) {
     std::vector<String>::iterator it = std::find(ledColorOrderNames.begin(), ledColorOrderNames.end(), newValue);
@@ -57,11 +55,9 @@ StoredProperty ledColorOrderProp("f3b7c8a1-5d2e-4f19-8c6a-9e1d0b2c3a4f", "ledCol
 // per-layer settings
 StoredMultiProperty speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", "1.0", "0.0,100.0", [](const String &newValue) {
     localPrefs.layers[StoredMultiProperty::getLayer()].speed = newValue.toFloat();
-    layerAnimations[StoredMultiProperty::getLayer()].duration = newValue.toFloat();
 });
 StoredMultiProperty colorProp("c116fce1-9a8a-4084-80a3-b83be2fbd108", "color1", "255 100 0", "0 0 0,255 255 255", [](const String &newValue) {
     localPrefs.layers[StoredMultiProperty::getLayer()].mainColor = rgbFromString(newValue);
-    if (localPrefs.mode == 1) buttonled.fill(rgbFromString(newValue));
 });
 StoredMultiProperty color2Prop("83595a76-1b17-4158-bcee-e702c3165caf", "color2", "240 255 0", "0 0 0,255 255 255", [](const String &newValue) {
     localPrefs.layers[StoredMultiProperty::getLayer()].secondaryColor = rgbFromString(newValue);

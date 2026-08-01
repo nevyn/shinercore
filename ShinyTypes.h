@@ -10,7 +10,6 @@ enum RunMode
 
     RunModeCount
 };
-void setMode(RunMode newMode);
 
 #define LAYER_COUNT 10
 #define PRESET_COUNT 5
@@ -67,7 +66,8 @@ String layerKey(const String &key, int layer, int preset);
 
 struct ShinySettings
 {
-    RunMode mode;
+    RunMode mode = On;
+    int brightness = 255;
     ShinyLayerSettings layers[LAYER_COUNT];
     int currentLayerIndex = 0;
     int currentPresetIndex = 0;

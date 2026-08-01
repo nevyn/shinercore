@@ -143,6 +143,7 @@ void loop(void) {
     
     update();
     commsUpdate(delta);
+    applyDerivedState();
 
     ledstrip.fill(CRGB::Black); // TODO: clear with layer 0 instead, to allow feedback patterns
     ansys.playElapsedTime(delta);
@@ -155,15 +156,17 @@ void loop(void) {
     }
 }
 
-void setMode(RunMode newMode)
+// Settings are canonical; push everything derived from them into the LED and
+// animation state every frame, so there are no sync obligations on writes.
+void applyDerivedState()
 {
-    localPrefs.mode = newMode;
-    buttonled.fill(localPrefs.mode==Off ? CRGB::Black :  localPrefs.layers[0].mainColor);
-
-    if(localPrefs.mode == Off) {
-        FastLED.setBrightness(0);
-    } else {
-        FastLED.setBrightness(brightnessProp.get().toInt());
+    FastLED.setBrightness(localPrefs.mode == Off ? 0 : localPrefs.brightness);
+    ledstrip.setNumPixels(localPrefs.ledCount);
+    backbuffer.setNumPixels(localPrefs.ledCount);
+    buttonled.fill(localPrefs.mode == Off ? CRGB::Black : localPrefs.layers[0].mainColor);
+    for(int i = 0; i < LAYER_COUNT; i++)
+    {
+        layerAnimations[i].duration = localPrefs.layers[i].speed;
     }
 }
 
