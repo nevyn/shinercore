@@ -37,11 +37,10 @@ Install the following libraries from
 
 ## todo
 
-- [ ] connect to every other shinercore in range
+- [x] hear every other shinercore in range (ESP-NOW broadcast; BLE couldn't mesh)
 - [ ] incorporate every other shinercore's primary color in the main animation
-- [ ] sync time between shinercores using a random master
-- [ ] if m5stick, use audio to sync timing to beat instead of using raw clock
-- [ ] if m5stick, automatically take master clock in mesh
+- [x] sync the beat grid between shinercores; the most confident mic leads
+- [x] beat detection from the microphone (M5Atom Echo)
 
 
 ## LED Strip Ordering Guide
