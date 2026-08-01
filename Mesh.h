@@ -24,6 +24,7 @@ enum MeshFrameType : uint8_t
 
 #define kMeshFlagHasMic 1
 #define kMeshFlagConfident 2
+#define kMeshFlagFollowing 4 // this grid is itself relayed from a leader
 
 struct __attribute__((packed)) MeshBeatFrame
 {
@@ -69,6 +70,7 @@ public:
         broadcast.ifidx = WIFI_IF_STA;
         esp_now_add_peer(&broadcast);
 
+        esp_wifi_get_mac(WIFI_IF_STA, _mac);
         _running = true;
         logger.print("mesh: on, "); logger.println(WiFi.macAddress());
     }
@@ -104,6 +106,11 @@ public:
             if(n.sinceBeat > kNeighborTimeout)
             {
                 n.used = false;
+                if(_following && memcmp(_leaderMac, n.mac, 6) == 0)
+                {
+                    _following = false;
+                    if(kDebugMesh) Serial.printf("mesh: leader went quiet, own grid again\n");
+                }
                 if(kDebugMesh) Serial.printf("mesh: lost %s\n", macStr(n.mac));
             }
         }
@@ -143,7 +150,9 @@ private:
         MeshBeatFrame frame = {};
         frame.version = kMeshVersion;
         frame.type = MeshFrameBeat;
-        frame.flags = (localPrefs.micEnabled ? 1 : 0) | (beats.confidence() > 0.4f ? 2 : 0);
+        frame.flags = (localPrefs.micEnabled ? kMeshFlagHasMic : 0)
+                    | (beats.confidence() > 0.4f ? kMeshFlagConfident : 0)
+                    | (_following ? kMeshFlagFollowing : 0);
         frame.period = beats.period();
         frame.phase = beats.phase();
         frame.beatTime = beats.beatTime();
@@ -177,6 +186,65 @@ private:
         if(!n) return; // table full of fresher neighbors
         n->beat = beat;
         n->sinceBeat = 0;
+        considerFollowing(*n);
+    }
+
+    struct Rank
+    {
+        float conf;
+        bool following; // relayed grids lose ties, which makes follow-cycles impossible
+        bool mic;
+        const uint8_t *mac;
+    };
+    Rank rankSelf() const { return {beats.confidence(), false, (bool)localPrefs.micEnabled, _mac}; }
+    static Rank rankOf(const MeshNeighbor &n)
+    {
+        return {n.beat.confidence, (bool)(n.beat.flags & kMeshFlagFollowing),
+                (bool)(n.beat.flags & kMeshFlagHasMic), n.mac};
+    }
+
+    // a outranks b when clearly more confident, or comparably confident and
+    // better placed: own grid beats a relay, a mic beats no mic, and the
+    // lowest MAC is the stable tiebreak
+    static bool outranks(const Rank &a, const Rank &b)
+    {
+        if(a.conf > b.conf + 0.1f) return true;
+        if(b.conf > a.conf + 0.1f) return false;
+        if(a.following != b.following) return b.following;
+        if(a.mic != b.mic) return a.mic;
+        return memcmp(a.mac, b.mac, 6) < 0;
+    }
+
+    // Follow the best grid in earshot. The current leader keeps our grid
+    // pulled to theirs on every beacon; anyone else (including ourselves)
+    // must outrank the incumbent to take over.
+    void considerFollowing(const MeshNeighbor &n)
+    {
+        if(!(n.beat.flags & kMeshFlagConfident)) return;
+
+        bool isLeader = _following && memcmp(_leaderMac, n.mac, 6) == 0;
+        if(isLeader && outranks(rankSelf(), rankOf(n)))
+        {
+            _following = false;
+            if(kDebugMesh) Serial.printf("mesh: outrank %s, own grid again\n", macStr(n.mac));
+            return;
+        }
+        if(!isLeader)
+        {
+            Rank incumbent = rankSelf();
+            if(_following)
+            {
+                for(const auto &l : _neighbors)
+                {
+                    if(l.used && memcmp(l.mac, _leaderMac, 6) == 0) { incumbent = rankOf(l); break; }
+                }
+            }
+            if(!outranks(rankOf(n), incumbent)) return;
+            _following = true;
+            memcpy(_leaderMac, n.mac, 6);
+            if(kDebugMesh) Serial.printf("mesh: following %s\n", macStr(n.mac));
+        }
+        beats.applyNetworkBeat(n.beat.period, n.beat.phase, n.beat.beatTime, n.beat.confidence);
     }
 
     MeshNeighbor *upsertNeighbor(const uint8_t *mac)
@@ -242,6 +310,9 @@ private:
 
     static Mesh *_instance;
     bool _running = false;
+    uint8_t _mac[6] = {0};
+    bool _following = false;
+    uint8_t _leaderMac[6] = {0};
     RxFrame _rxRing[kRxRingSize];
     volatile int _rxHead = 0; // written by wifi task
     volatile int _rxTail = 0; // written by loop task

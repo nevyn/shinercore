@@ -109,6 +109,30 @@ public:
     /// 0..1: how well recent onsets have matched the predicted grid.
     float confidence() const { return _confidence; }
 
+    /// Evidence from a more confident neighbor's grid (Mesh.h decides whose).
+    /// Pulls period, phase and the whole-beat count toward the leader's;
+    /// corrections mirror into beatTime so beat-synced layers glide along, and
+    /// agreeing on the beat number aligns their cycles across cores.
+    void applyNetworkBeat(float period, float phase, double beatTime, float confidence)
+    {
+        _period += (period - _period) * kPeriodGain;
+
+        float err = (float)remainder((double)_beatPhase - (double)phase, 1.0); // signed beats ahead of the leader
+        _beatPhase -= err * kPhaseGain;
+        _totalBeats -= err * kPhaseGain;
+        if(_beatPhase < 0) _beatPhase += 1.0f;
+        if(_beatPhase >= 1.0f) _beatPhase -= 1.0f;
+
+        double wholeBeats = round(beatTime - _totalBeats);
+        _totalBeats += wholeBeats;
+
+        float target = confidence * 0.9f;
+        if(target > _confidence) _confidence = target;
+
+        if(kDebugAudio) Serial.printf("MESH  err %+.3f%s %5.1fbpm conf %.2f\n",
+                                      err, wholeBeats ? " (beat # adopted)" : "", bpm(), _confidence);
+    }
+
 private:
     static const int kSampleRate = 16000;
     static const int kChunkSamples = 256;            // 16ms per decision
