@@ -11,12 +11,10 @@ void LayerAnimation::animate(float fraction)
     _lastFraction = fraction;
     TimeInterval absoluteTime = _accumulated + fraction;
 
-    AnimateLayerFunc func = animationFuncs[prefs->animationIndex];
+    if(prefs->animationIndex == 0) return; // Nothing: skip the fill and blend entirely
+
     backbuffer->fill(CRGB::Black);
-
-    if(prefs->animationIndex == 0) return; // NoAnimation? do nothing, don't waste time filling and blending.
-
-    func(this, absoluteTime); 
+    animationFuncs[prefs->animationIndex](this, absoluteTime);
 
     for(int i = 0; i < frontbuffer->numPixels(); i++)
     {
