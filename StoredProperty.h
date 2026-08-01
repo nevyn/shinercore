@@ -11,11 +11,13 @@
 // projections of it. A write that doesn't decode is ignored and the current
 // value republished; an empty write resets to the default, which is whatever
 // the field held at construction (i.e. the struct initializer).
+// Every change goes through publish(), so subscribed centrals get notified of
+// all of them: another central's writes, the layer/preset cursor fanout, loads.
 class Property
 {
 public:
     Property(const char *uuid, const char *key)
-      : chara(uuid, BLERead | BLEWrite, 36),
+      : chara(uuid, BLERead | BLEWrite | BLENotify, 36),
         key(key),
         nameDescriptor(kDescriptorUserDesc, key),
         formatDescriptor(kDescriptorPresentationFormat, kDescriptorPresentationFormat_String)
