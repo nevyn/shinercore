@@ -29,17 +29,22 @@ SubStrip backbuffer(bbstrip, MAX_LED_COUNT);
 CRGB btnled[1];
 SubStrip buttonled(btnled, 1);
 
+// Animations render from these, which trail the canonical settings (below in
+// applyDerivedState) so parameter changes glide instead of jumping
+ShinyLayerSettings renderedLayers[LAYER_COUNT];
+float renderedBrightness = 0;
+
 LayerAnimation layerAnimations[LAYER_COUNT] = {
-    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[0]),
-    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[1]),
-    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[2]),
-    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[3]),
-    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[4]),
-    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[5]),
-    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[6]),
-    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[7]),
-    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[8]),
-    LayerAnimation(&backbuffer, &ledstrip, &localPrefs.layers[9]),
+    LayerAnimation(&backbuffer, &ledstrip, &renderedLayers[0]),
+    LayerAnimation(&backbuffer, &ledstrip, &renderedLayers[1]),
+    LayerAnimation(&backbuffer, &ledstrip, &renderedLayers[2]),
+    LayerAnimation(&backbuffer, &ledstrip, &renderedLayers[3]),
+    LayerAnimation(&backbuffer, &ledstrip, &renderedLayers[4]),
+    LayerAnimation(&backbuffer, &ledstrip, &renderedLayers[5]),
+    LayerAnimation(&backbuffer, &ledstrip, &renderedLayers[6]),
+    LayerAnimation(&backbuffer, &ledstrip, &renderedLayers[7]),
+    LayerAnimation(&backbuffer, &ledstrip, &renderedLayers[8]),
+    LayerAnimation(&backbuffer, &ledstrip, &renderedLayers[9]),
 };
 
 
@@ -141,7 +146,7 @@ void loop(void) {
     
     update();
     commsUpdate(delta);
-    applyDerivedState();
+    applyDerivedState(delta);
 
     ledstrip.fill(CRGB::Black); // TODO: clear with layer 0 instead, to allow feedback patterns
     ansys.playElapsedTime(delta);
@@ -154,17 +159,51 @@ void loop(void) {
     }
 }
 
+// Exponential approach: how far to move toward a target this frame
+static const float kSettingsSlewTime = 0.2; // seconds to cover ~63% of a change
+static float slew(float current, float target, float alpha)
+{
+    return current + (target - current) * alpha;
+}
+static CRGB slewColor(const CRGB &current, const CRGB &target, float alpha)
+{
+    // round away from current so the last step actually lands on the target
+    CRGB out;
+    for(int ch = 0; ch < 3; ch++)
+    {
+        float v = slew(current.raw[ch], target.raw[ch], alpha);
+        out.raw[ch] = target.raw[ch] > current.raw[ch] ? (uint8_t)ceilf(v) : (uint8_t)floorf(v);
+    }
+    return out;
+}
+
 // Settings are canonical; push everything derived from them into the LED and
 // animation state every frame, so there are no sync obligations on writes.
-void applyDerivedState()
+// Continuous parameters slew toward their targets so changes glide: colors
+// crossfade, wave periods stretch, brightness fades, presets morph into each
+// other. Discrete parameters (animation, blend mode) snap.
+void applyDerivedState(TimeInterval dt)
 {
-    FastLED.setBrightness(localPrefs.mode == Off ? 0 : localPrefs.brightness);
+    float alpha = 1 - expf(-dt / kSettingsSlewTime);
+
+    renderedBrightness = slew(renderedBrightness, localPrefs.mode == Off ? 0 : localPrefs.brightness, alpha);
+    FastLED.setBrightness((uint8_t)roundf(renderedBrightness));
     ledstrip.setNumPixels(localPrefs.ledCount);
     backbuffer.setNumPixels(localPrefs.ledCount);
-    buttonled.fill(localPrefs.mode == Off ? CRGB::Black : localPrefs.layers[0].mainColor);
+    buttonled.fill(localPrefs.mode == Off ? CRGB::Black : renderedLayers[0].mainColor);
+
     for(int i = 0; i < LAYER_COUNT; i++)
     {
-        layerAnimations[i].duration = localPrefs.layers[i].speed;
+        const ShinyLayerSettings &target = localPrefs.layers[i];
+        ShinyLayerSettings &shown = renderedLayers[i];
+        shown.mainColor = slewColor(shown.mainColor, target.mainColor, alpha);
+        shown.secondaryColor = slewColor(shown.secondaryColor, target.secondaryColor, alpha);
+        shown.speed = slew(shown.speed, target.speed, alpha);
+        shown.p_tau = slew(shown.p_tau, target.p_tau, alpha);
+        shown.p_phi = slew(shown.p_phi, target.p_phi, alpha);
+        shown.blendMode = target.blendMode;
+        shown.animationIndex = target.animationIndex;
+        layerAnimations[i].duration = shown.speed;
     }
 }
 

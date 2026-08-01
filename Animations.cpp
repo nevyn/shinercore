@@ -15,6 +15,12 @@ static inline float hashFloat(uint32_t seed) {
     return (hash(seed) & 0xFFFF) / 65535.0f;
 }
 
+// tau/phi are divisors in the wave animations, can be set to 0, and slew
+// through 0 when changing sign; keep the division finite
+static inline float nonzero(float v) {
+    return fabsf(v) < 0.05f ? (v < 0 ? -0.05f : 0.05f) : v;
+}
+
 void NothingAnim(LayerAnimation *self, TimeInterval t)
 {
 }
@@ -31,7 +37,7 @@ void OpposingWavesAnim(LayerAnimation *self, TimeInterval t)
     ShinyLayerSettings *prefs = self->prefs;
     for(int i = 0; i < strip->numPixels(); i++)
     {
-        strip->set(i, prefs->mainColor * (gammaf(curve(t - i/prefs->p_tau))/2.0f) + prefs->secondaryColor * (gammaf(curve(t + i/prefs->p_phi))/2.0f));
+        strip->set(i, prefs->mainColor * (gammaf(curve(t - i/nonzero(prefs->p_tau)))/2.0f) + prefs->secondaryColor * (gammaf(curve(t + i/nonzero(prefs->p_phi)))/2.0f));
     }
 }
 
@@ -42,7 +48,7 @@ void SingleWaveAnim(LayerAnimation *self, TimeInterval t)
     ShinyLayerSettings *prefs = self->prefs;
     for(int i = 0; i < strip->numPixels(); i++)
     {
-        strip->set(i, prefs->mainColor * (gammaf(curve(t - i/prefs->p_tau + prefs->p_phi))));
+        strip->set(i, prefs->mainColor * (gammaf(curve(t - i/nonzero(prefs->p_tau) + prefs->p_phi))));
     }
 }
 
