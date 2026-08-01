@@ -67,6 +67,17 @@ as of 2026-08-02:
 
 ## Known limits / next directions
 
+* **Real house still blinks on the offbeat** (2026-08-02, after the sharpness fix;
+  synthetic offbeat-bass passes). Suspects, in order: the SPM1423 rolls off below
+  ~100Hz and rooms smear attacks, so a real kick may arrive in the kick band soft and
+  slow while the offbeat bassline sustains; house sidechain pump swells every offbeat.
+  Next session: capture serial (ONSET sharp/phase lines) against a misbehaving track
+  and look at what sharpness real kicks vs offbeat bass actually measure. Cheap
+  pragmatic escape regardless: a half-beat flip control in the app, since the grid's
+  tempo and lattice are right and only the half-choice is wrong. Another anchor worth
+  trying: house claps sit ON 2 and 4 - a high-band onset stream would vote for the
+  right half.
+
 * **Two-step breakbeats (DnB) lock the kick pattern, not the beat**: a 174 two-step's
   kick self-similarity peaks at the 1.5/2.5-beat kick intervals, which beat the
   correct 87 half-time in a single summed envelope. Next step: per-band
