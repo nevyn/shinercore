@@ -89,6 +89,7 @@ static inline int meshCarouselSlot(double beatTime, int beatsPerSlot, int slotCo
     if(slotCount <= 1) return 0;
     if(beatTime < 0) beatTime = 0;
     if(beatsPerSlot < 1) beatsPerSlot = 1;
+    if(fadeBeats > beatsPerSlot) fadeBeats = beatsPerSlot; // every layer must cross within its slot
     long long slotNumber = (long long)(beatTime / beatsPerSlot);
     double intoSlot = beatTime - (double)slotNumber * beatsPerSlot;
     float threshold = (meshMix(layer * 7919u + (uint32_t)slotNumber) % 1000) / 1000.0f * fadeBeats;

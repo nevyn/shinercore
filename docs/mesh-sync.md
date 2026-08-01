@@ -49,6 +49,10 @@ localPrefs stays canonical: app edits land there, broadcast after settling, and 
 on stage when your own slot comes around. Solo (no neighbors), the carousel
 degenerates to playing your own preset — behavior unchanged.
 
+Lockstep is only as tight as the neighbor tables: cores at radio-range edges hear
+different sets, and a join/leave remaps everyone's slot list mid-slot. The settings
+slew keeps those moments graceful rather than correct.
+
 ## Settings
 
 | property | default | meaning |

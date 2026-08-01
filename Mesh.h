@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include <esp_now.h>
 #include <esp_wifi.h>
+#include <atomic>
 #include <OverAnimate.h>
 #include "ShinyTypes.h"
 #include "MeshLogic.h"
@@ -36,14 +37,17 @@ class Mesh
 public:
     void begin()
     {
-        if(_running) return;
+        // applyDerivedState retries every frame; a persistent init failure
+        // must not turn the render loop into a wifi bring-up loop
+        if(_running || (long)(millis() - _retryAfterMillis) < 0) return;
         WiFi.mode(WIFI_STA);
         WiFi.disconnect();  // no AP: park on our fixed channel
         esp_wifi_set_channel(kMeshChannel, WIFI_SECOND_CHAN_NONE);
         if(esp_now_init() != ESP_OK)
         {
-            logger.println("mesh: esp_now_init failed");
+            logger.println("mesh: esp_now_init failed, retrying in 30s");
             WiFi.mode(WIFI_OFF);
+            _retryAfterMillis = millis() + 30000;
             return;
         }
         esp_now_register_send_cb(&Mesh::onSent);
@@ -62,6 +66,7 @@ public:
 
     void end()
     {
+        _retryAfterMillis = millis(); // toggling the setting retries immediately
         if(!_running) return;
         esp_now_deinit();
         WiFi.mode(WIFI_OFF);
@@ -75,12 +80,15 @@ public:
     {
         if(!_running) return;
 
-        // drain frames the wifi task queued
-        while(_rxTail != _rxHead)
+        // drain frames the wifi task queued; acquire pairs with the release in
+        // onReceived so the slot contents are visible before the index is
+        while(true)
         {
-            RxFrame &frame = _rxRing[_rxTail];
+            int tail = _rxTail.load(std::memory_order_relaxed);
+            if(tail == _rxHead.load(std::memory_order_acquire)) break;
+            RxFrame &frame = _rxRing[tail];
             handleFrame(frame.mac, frame.data, frame.len);
-            _rxTail = (_rxTail + 1) % kRxRingSize;
+            _rxTail.store((tail + 1) % kRxRingSize, std::memory_order_release);
         }
 
         // age out neighbors we stopped hearing
@@ -258,14 +266,24 @@ private:
 
     void handleBeat(const uint8_t *mac, const MeshBeatFrame &beat)
     {
+        // hostile-input clamps like the preset path: one bad frame must not
+        // NaN the grid (it would propagate mesh-wide and survive until reboot)
+        if(!isfinite(beat.period) || !isfinite(beat.phase) || !isfinite(beat.beatTime) || !isfinite(beat.confidence)) return;
+        if(fabs(beat.beatTime) > 1e8) return; // a festival week is ~2M beats
+
         MeshNeighbor *n = upsertNeighbor(mac);
         if(!n) return; // table full of fresher neighbors
         n->beat = beat;
+        n->beat.period = clampTo(beat.period, 0.2f, 1.2f);
+        n->beat.phase = beat.phase - floorf(beat.phase); // wrap to [0,1)
+        n->beat.confidence = clampTo(beat.confidence, 0.0f, 1.0f);
         n->sinceBeat = 0;
         considerFollowing(*n);
     }
 
-    MeshRank rankSelf() const { return {beats.confidence(), false, (bool)localPrefs.micEnabled, _mac}; }
+    // Report the real following state: a relay must lose rank ties to its own
+    // leader too, or it flaps between following and defecting every beacon
+    MeshRank rankSelf() const { return {beats.confidence(), _following, (bool)localPrefs.micEnabled, _mac}; }
     static MeshRank rankOf(const MeshNeighbor &n)
     {
         return {n.beat.confidence, (bool)(n.beat.flags & kMeshFlagFollowing),
@@ -316,6 +334,11 @@ private:
         MeshNeighbor *slot = free_ ? free_ : (oldest && oldest->sinceBeat > 2.0 ? oldest : nullptr);
         if(slot)
         {
+            if(slot->used && _following && memcmp(_leaderMac, slot->mac, 6) == 0)
+            {
+                _following = false; // evicting the leader; don't follow a ghost forever
+            }
+            *slot = MeshNeighbor(); // the newcomer must not inherit the evictee's preset
             slot->used = true;
             memcpy(slot->mac, mac, 6);
             if(kDebugMesh) Serial.printf("mesh: hello %s\n", macStr(mac));
@@ -365,9 +388,9 @@ private:
     static void onReceived(const uint8_t *mac, const uint8_t *data, int len)
     {
         _instance->_rxCount++;
-        int head = _instance->_rxHead;
+        int head = _instance->_rxHead.load(std::memory_order_relaxed);
         int next = (head + 1) % kRxRingSize;
-        if(next == _instance->_rxTail || len > (int)sizeof(RxFrame::data))
+        if(next == _instance->_rxTail.load(std::memory_order_acquire) || len > (int)sizeof(RxFrame::data))
         {
             _instance->_rxDropCount++;
             return;
@@ -376,7 +399,7 @@ private:
         memcpy(slot.mac, mac, 6);
         slot.len = len;
         memcpy(slot.data, data, len);
-        _instance->_rxHead = next;
+        _instance->_rxHead.store(next, std::memory_order_release); // publish after the copy
     }
 
     static const int kRxRingSize = 8;
@@ -402,8 +425,9 @@ private:
     bool _following = false;
     uint8_t _leaderMac[6] = {0};
     RxFrame _rxRing[kRxRingSize];
-    volatile int _rxHead = 0; // written by wifi task
-    volatile int _rxTail = 0; // written by loop task
+    std::atomic<int> _rxHead{0}; // written by wifi task
+    std::atomic<int> _rxTail{0}; // written by loop task
+    unsigned long _retryAfterMillis = 0;
     MeshNeighbor _neighbors[kMaxNeighbors];
     TimeInterval _sinceTx = 0;
     TimeInterval _txInterval = 0;

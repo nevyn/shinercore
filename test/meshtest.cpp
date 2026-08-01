@@ -32,6 +32,13 @@ int main() {
     MeshRank aFollowing = {0.81f, true, false, macA};   // A relaying B's 0.9 grid
     MeshRank bLeader = {0.9f, false, true, macB};
     check("no follow cycle", !meshOutranks(aFollowing, bLeader));
+    // A follower's SELF-view must also lose ties to its leader (0.9x conf is
+    // always within the hysteresis band), or it defects and re-follows every
+    // beacon: rankSelf must report the real following flag for this to hold.
+    MeshRank followerSelf = {0.63f, true, true, macA};  // low mac, has mic, relaying
+    MeshRank itsLeader = {0.7f, false, true, macB};
+    check("follower self-view stays loyal in band", !meshOutranks(followerSelf, itsLeader));
+    check("follower still defects when clearly better", meshOutranks({0.85f, true, true, macA}, itsLeader));
     // asymmetry holds everywhere it matters
     bool sym_ok = true;
     float confs[] = {0.0f, 0.45f, 0.5f, 0.55f, 1.0f};
@@ -62,6 +69,11 @@ int main() {
     // slots advance and wrap
     check("slot advances", meshCarouselSlot(8 * 6 + 3.0, 8, 4, 0, 2.0f) == 6 % 4);
     check("degenerate beatsPerSlot survives", meshCarouselSlot(10.0, 0, 4, 0, 2.0f) >= 0);
+    // fade window longer than the slot: every layer must still cross over
+    bool oneBeansAgree = true;
+    for(int layer = 0; layer < LAYER_COUNT; layer++)
+        if(meshCarouselSlot(1 * 37 + 0.999, 1, 4, layer, 2.0f) != 37 % 4) oneBeansAgree = false;
+    check("carouselBeats=1 still reaches every layer", oneBeansAgree);
 
     printf("\n%s\n", failures ? "FAILURES" : "all passed");
     return failures ? 1 : 0;
