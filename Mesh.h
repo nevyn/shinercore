@@ -5,6 +5,7 @@
 #include <esp_wifi.h>
 #include <OverAnimate.h>
 #include "ShinyTypes.h"
+#include "MeshLogic.h"
 #include "Codecs.h"
 #include "BeatDetector.h"
 #include "Util.h"
@@ -17,54 +18,8 @@
 // must stay correct with lost frames and repeated frames.
 
 #define kMeshChannel 1
-#define kMeshVersion 1
 
 static const uint8_t kBroadcastAddr[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
-enum MeshFrameType : uint8_t
-{
-    MeshFrameBeat = 1,
-    MeshFramePreset = 2,
-};
-
-#define kMeshFlagHasMic 1
-#define kMeshFlagConfident 2
-#define kMeshFlagFollowing 4 // this grid is itself relayed from a leader
-
-struct __attribute__((packed)) MeshBeatFrame
-{
-    uint8_t version;
-    uint8_t type;
-    uint8_t flags;      // kMeshFlag*
-    float period;       // seconds per beat
-    float phase;        // 0..1 within the current beat, at send time
-    double beatTime;    // fractional beats since sender's boot
-    float confidence;   // 0..1
-    uint8_t color[3];   // sender's layer 0 mainColor
-};
-
-// A neighbor's current preset, one non-empty layer per entry. Ten of these
-// plus the header still fit one 250-byte ESP-NOW frame.
-struct __attribute__((packed)) MeshPresetLayer
-{
-    uint8_t layer;
-    uint8_t animation;  // index into animationNames; only valid same-version
-    uint8_t blendMode;
-    uint8_t beatSync;
-    uint8_t color1[3];
-    uint8_t color2[3];
-    float speed;
-    float tau;
-    float phi;
-};
-
-struct __attribute__((packed)) MeshPresetFrame
-{
-    uint8_t version;
-    uint8_t type;
-    uint8_t layerCount;
-    MeshPresetLayer layers[LAYER_COUNT]; // only layerCount are sent
-};
 
 struct MeshNeighbor
 {
@@ -198,15 +153,8 @@ public:
     {
         if(!_running || !localPrefs.meshShow || _slotCount <= 1) return &localPrefs.layers[layer];
 
-        double bt = beats.beatTime();
-        if(bt < 0) bt = 0;
-        int per = localPrefs.carouselBeats < 1 ? 1 : localPrefs.carouselBeats;
-        long long slotNumber = (long long)(bt / per);
-        double intoSlot = bt - (double)slotNumber * per;
-        float threshold = (mix(layer * 7919u + (uint32_t)slotNumber) % 1000) / 1000.0f * kCarouselFadeBeats;
-        long long effective = intoSlot >= threshold ? slotNumber : slotNumber - 1;
-        const Slot &slot = _slots[(int)(((effective % _slotCount) + _slotCount) % _slotCount)];
-        return &slot.layers[layer];
+        int index = meshCarouselSlot(beats.beatTime(), localPrefs.carouselBeats, _slotCount, layer, kCarouselFadeBeats);
+        return &_slots[index].layers[layer];
     }
 
 private:
@@ -317,30 +265,11 @@ private:
         considerFollowing(*n);
     }
 
-    struct Rank
-    {
-        float conf;
-        bool following; // relayed grids lose ties, which makes follow-cycles impossible
-        bool mic;
-        const uint8_t *mac;
-    };
-    Rank rankSelf() const { return {beats.confidence(), false, (bool)localPrefs.micEnabled, _mac}; }
-    static Rank rankOf(const MeshNeighbor &n)
+    MeshRank rankSelf() const { return {beats.confidence(), false, (bool)localPrefs.micEnabled, _mac}; }
+    static MeshRank rankOf(const MeshNeighbor &n)
     {
         return {n.beat.confidence, (bool)(n.beat.flags & kMeshFlagFollowing),
                 (bool)(n.beat.flags & kMeshFlagHasMic), n.mac};
-    }
-
-    // a outranks b when clearly more confident, or comparably confident and
-    // better placed: own grid beats a relay, a mic beats no mic, and the
-    // lowest MAC is the stable tiebreak
-    static bool outranks(const Rank &a, const Rank &b)
-    {
-        if(a.conf > b.conf + 0.1f) return true;
-        if(b.conf > a.conf + 0.1f) return false;
-        if(a.following != b.following) return b.following;
-        if(a.mic != b.mic) return a.mic;
-        return memcmp(a.mac, b.mac, 6) < 0;
     }
 
     // Follow the best grid in earshot. The current leader keeps our grid
@@ -351,7 +280,7 @@ private:
         if(!(n.beat.flags & kMeshFlagConfident)) return;
 
         bool isLeader = _following && memcmp(_leaderMac, n.mac, 6) == 0;
-        if(isLeader && outranks(rankSelf(), rankOf(n)))
+        if(isLeader && meshOutranks(rankSelf(), rankOf(n)))
         {
             _following = false;
             if(kDebugMesh) Serial.printf("mesh: outrank %s, own grid again\n", macStr(n.mac));
@@ -359,7 +288,7 @@ private:
         }
         if(!isLeader)
         {
-            Rank incumbent = rankSelf();
+            MeshRank incumbent = rankSelf();
             if(_following)
             {
                 for(const auto &l : _neighbors)
@@ -367,7 +296,7 @@ private:
                     if(l.used && memcmp(l.mac, _leaderMac, 6) == 0) { incumbent = rankOf(l); break; }
                 }
             }
-            if(!outranks(rankOf(n), incumbent)) return;
+            if(!meshOutranks(rankOf(n), incumbent)) return;
             _following = true;
             memcpy(_leaderMac, n.mac, 6);
             if(kDebugMesh) Serial.printf("mesh: following %s\n", macStr(n.mac));
@@ -417,13 +346,6 @@ private:
                 std::swap(_slots[j], _slots[j-1]);
             }
         }
-    }
-
-    static uint32_t mix(uint32_t x)
-    {
-        x = ((x >> 16) ^ x) * 0x45d9f3b;
-        x = ((x >> 16) ^ x) * 0x45d9f3b;
-        return (x >> 16) ^ x;
     }
 
     static const char *macStr(const uint8_t *mac)

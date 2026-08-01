@@ -47,6 +47,19 @@ screen -S shinerserial -X quit        # releases the port for flashing
 
 `-X hardcopy` only dumps one screenful; use logging for anything longitudinal.
 
+## Building from a worktree
+
+arduino-cli requires the sketch directory to be named `shinercore`, which a worktree
+isn't. A directory symlink gets resolved and rejected; symlink the *files* instead:
+
+```
+mkdir -p /tmp/meshbuild/shinercore
+for f in <worktree>/*.ino <worktree>/*.h <worktree>/*.cpp; do ln -s "$f" /tmp/meshbuild/shinercore/; done
+arduino-cli compile -b ... /tmp/meshbuild/shinercore
+```
+
+Re-run the link loop after adding a new source file.
+
 ## Hands-free audio testing
 
 The beat detector is tested by generating WAV test signals (python stdlib `wave`:
