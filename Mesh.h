@@ -290,13 +290,13 @@ private:
                 (bool)(n.beat.flags & kMeshFlagHasMic), n.mac};
     }
 
-    // Follow the best grid in earshot. The current leader keeps our grid
-    // pulled to theirs on every beacon; anyone else (including ourselves)
-    // must outrank the incumbent to take over.
+    // Follow the best grid in earshot, confident or not: a quiet mesh elects
+    // somebody's freewheeling grid (rank falls through to lowest MAC - the
+    // random master) so the carousel stays in lockstep between songs. The
+    // current leader keeps our grid pulled to theirs on every beacon; anyone
+    // else (including ourselves) must outrank the incumbent to take over.
     void considerFollowing(const MeshNeighbor &n)
     {
-        if(!(n.beat.flags & kMeshFlagConfident)) return;
-
         bool isLeader = _following && memcmp(_leaderMac, n.mac, 6) == 0;
         if(isLeader && meshOutranks(rankSelf(), rankOf(n)))
         {

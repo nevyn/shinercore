@@ -31,9 +31,10 @@ Leadership is implicit, computed per received beacon (`meshOutranks`): confidenc
 with a ±0.1 hysteresis band, then own-grid-over-relay, then mic-over-none, then
 lowest MAC. Followers rebroadcast the grid at 0.9× the leader's confidence, so sync
 propagates beyond the leader's radio range with decaying authority; the relay flag
-losing rank ties makes follow-cycles impossible (test-covered). A silent leader ages
-out after 5s and everyone freewheels on their own grid, still together, until
-someone confident reappears.
+losing rank ties makes follow-cycles impossible (test-covered). Following doesn't
+require a confident leader: a quiet mesh elects somebody's freewheeling grid by rank
+(ultimately lowest MAC — the random master), so the carousel stays in lockstep
+between songs. A silent leader ages out after 5s.
 
 ## Preset carousel
 
