@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(h|cpp|ino\\)$\")",
+      "Read(//Users/nevyn/Dev/ShinerCoreRemote/**)"
+    ],
+    "additionalDirectories": [
+      "/Users/nevyn/Dev/ShinerCoreRemote/ShinerCoreRemote"
+    ]
+  }
+}
