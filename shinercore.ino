@@ -124,8 +124,6 @@ void setup(void) {
         displaySetup(M5.getDisplay(0));
     }
 
-    beats.setup();
-
     for(int i = 0; i < LAYER_COUNT; i++)
     {
         ansys.addAnimation(&layerAnimations[i]);
@@ -147,6 +145,7 @@ void loop(void) {
     update();
     commsUpdate(delta);
     applyDerivedState(delta);
+    beats.update(delta);
 
     ledstrip.fill(CRGB::Black); // TODO: clear with layer 0 instead, to allow feedback patterns
     ansys.playElapsedTime(delta);
@@ -205,6 +204,9 @@ void applyDerivedState(TimeInterval dt)
         shown.animationIndex = target.animationIndex;
         layerAnimations[i].duration = shown.speed;
     }
+
+    if(localPrefs.micEnabled && !beats.running()) beats.begin();
+    else if(!localPrefs.micEnabled && beats.running()) beats.end();
 }
 
 bool presetHasAnimations(int presetIndex)
@@ -260,12 +262,16 @@ void update(void)
     }
 
 #ifdef HAS_GPIO_CONTROLS
-    // GPIO direct preset buttons: pull low to select that preset
-    for(int i = 0; i < DIRECT_PRESET_PIN_COUNT; i++)
+    // GPIO direct preset buttons: pull low to select that preset. On an Echo
+    // these pins are the mic and speaker, so they're dead while the mic runs.
+    if(!localPrefs.micEnabled)
     {
-        if(digitalRead(presetPins[i]) == LOW && localPrefs.currentPresetIndex != i)
+        for(int i = 0; i < DIRECT_PRESET_PIN_COUNT; i++)
         {
-            presetProp.set(i);
+            if(digitalRead(presetPins[i]) == LOW && localPrefs.currentPresetIndex != i)
+            {
+                presetProp.set(i);
+            }
         }
     }
 

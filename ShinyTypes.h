@@ -72,6 +72,7 @@ struct ShinySettings
     int currentPresetIndex = 0;
     LedColorOrder ledColorOrder = LedOrderGRB;
     int ledCount = MAX_LED_COUNT/2;
+    int micEnabled = 0; // only useful on an M5Atom Echo; see BeatDetector.h
     ShinyLayerSettings *currentLayer()
     {
         return &layers[currentLayerIndex];

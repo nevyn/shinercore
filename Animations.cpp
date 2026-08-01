@@ -1,4 +1,5 @@
 #include "Animations.h"
+#include "BeatDetector.h"
 #include "Util.h"
 
 // Simple hash for deterministic pseudo-random based on position/time
@@ -333,6 +334,13 @@ void SparkleAnim(LayerAnimation *self, TimeInterval t)
     }
 }
 
+// Whole strip flashes mainColor on every detected beat (needs the mic setting
+// on and an M5Atom Echo). Layer it over other animations with Add or Screen.
+void BeatPulseAnim(LayerAnimation *self, TimeInterval t)
+{
+    self->backbuffer->fill(self->prefs->mainColor * beats.envelope());
+}
+
 extern std::vector<String> animationNames = {
     "Nothing",
     "Static",
@@ -347,6 +355,7 @@ extern std::vector<String> animationNames = {
     "Color Wipe",
     "Gradient Pulse",
     "Sparkle",
+    "Beat Pulse",
 };
 std::vector<AnimateLayerFunc> animationFuncs = {
     NothingAnim,
@@ -362,4 +371,5 @@ std::vector<AnimateLayerFunc> animationFuncs = {
     ColorWipeAnim,
     GradientPulseAnim,
     SparkleAnim,
+    BeatPulseAnim,
 };

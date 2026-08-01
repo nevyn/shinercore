@@ -1,105 +1,135 @@
-// Inspiration for beat detection:
-// * https://github.com/blaz-r/ESP32-music-beat-sync/blob/main/src/ESP32-music-beat-sync.cpp
-// * https://github.com/garrickhogrebe/ESP32FastLEDSketches same with threads
+#ifndef __BEAT_DETECTOR__H
+#define __BEAT_DETECTOR__H
+#include "M5Unified.h"
+#include <OverAnimate.h>
+#include "Util.h"
+
+// Beat detection from an M5Atom Echo's PDM microphone (SPM1423, CLK on G33,
+// DATA on G23), captured through M5Unified's Mic_Class. Mic_Class selects PDM
+// mode automatically when pin_bck is unset.
 //
-// References for mic handling:
-// * https://docs.m5stack.com/en/atom/atomecho
-// * Using i2c on the Echo: https://github.com/m5stack/M5-ProductExampleCodes/blob/master/Core/Atom/AtomEcho/Arduino/Repeater/Repeater.ino
-// * ... and cleaned up: https://github.com/nevyn/NevynsArduino/blob/master/m5audiotest/m5audiotest.ino
-// * Using Unified: https://github.com/m5stack/M5Unified/blob/master/examples/Basic/Microphone/Microphone.ino
-
-
-/// Opens microphone if available, and detects the beat of any playing music using FFT.
+// Detection is energy-based, no FFT: each 16ms chunk of audio is low-pass
+// filtered to keep the kick-drum band, and its energy is compared against the
+// mean and deviation of the last ~0.8s. An energy spike is a beat. envelope()
+// then decays 1 -> 0 for animations to render.
+//
+// The Echo can't be detected at runtime (same chip as the Atom Lite, and a PDM
+// mic can't be probed), so this only runs when the "mic" setting is on.
 class BeatDetector
 {
 public:
-  BeatDetector() 
-    : _isOnBeat(false), data_offset(0)
-  {}
-
-  void setup()
-  {
-    uses_echo = OpenEchoMic();
-    logger.print("Beat detector using echo mic? ");
-    logger.println(uses_echo);
-  }
-
-  void update()
-  {
-    if(uses_echo)
+    void begin()
     {
-      ReadEcho();
+        if(_running) return;
+        auto cfg = M5.Mic.config();
+        cfg.pin_data_in = 23;
+        cfg.pin_ws = 33;
+        cfg.sample_rate = kSampleRate;
+        M5.Mic.config(cfg);
+        _running = M5.Mic.begin();
+        if(_running)
+        {
+            M5.Mic.record(_chunks[0], kChunkSamples);
+            M5.Mic.record(_chunks[1], kChunkSamples);
+            _nextChunk = 0;
+        }
+        logger.print("mic: "); logger.println(_running ? "recording" : "failed to start");
     }
-    static const int third_of_a_second_in_samples = 1000; // figure out
-    if(data_offset > third_of_a_second_in_samples)
+    void end()
     {
-      AnalyzeAudio();
-      data_offset = 0;
+        if(!_running) return;
+        M5.Mic.end();
+        _running = false;
     }
-  }
+    bool running() const { return _running; }
 
-  bool isOnBeat()
-  {
-    return _isOnBeat;
-  }
+    void update(TimeInterval delta)
+    {
+        _envelope *= expf(-delta / kEnvelopeDecay);
+        if(!_running) return;
+
+        // Consume finished chunks and hand their buffers back; two are always
+        // queued, so the mic task never starves and we never block.
+        int guard = 4;
+        while(M5.Mic.isRecording() < 2 && guard--)
+        {
+            analyze(_chunks[_nextChunk]);
+            M5.Mic.record(_chunks[_nextChunk], kChunkSamples);
+            _nextChunk ^= 1;
+        }
+
+        if(kDebugAudio)
+        {
+            _sinceDebugPrint += delta;
+            if(_sinceDebugPrint > 0.25)
+            {
+                _sinceDebugPrint = 0;
+                Serial.printf("mic rms %6.0f  avg %6.0f  envelope %.2f\n",
+                              sqrtf(_lastEnergy), sqrtf(_meanEnergy), _envelope);
+            }
+        }
+    }
+
+    /// 1.0 at the moment of a beat, exponentially decaying to 0. Render this.
+    float envelope() const { return _envelope; }
+
 private:
-  uint8_t micdata[1024 * 80];
-  int data_offset;
-  bool uses_echo;
+    static const int kSampleRate = 16000;
+    static const int kChunkSamples = 256;            // 16ms per decision
+    static const int kRingSize = 48;                 // ~0.8s of energy history
+    static const int kRefractoryChunks = 16;         // >=256ms between beats = <=234bpm
+    static constexpr float kBassAlpha = 0.061f;      // one-pole LPF at ~160Hz
+    static constexpr float kSensitivity = 1.8f;      // beat = mean + this many std devs. TUNE
+    static constexpr float kEnergyFloor = 120.0f * 120.0f; // ignore near-silence; quiet room ambient is ~40 rms
+    static constexpr float kEnvelopeDecay = 0.15f;   // seconds
+    static const bool kDebugAudio = true;            // serial meter for bring-up
 
-  bool _isOnBeat;
+    void analyze(const int16_t *samples)
+    {
+        float energy = 0;
+        for(int i = 0; i < kChunkSamples; i++)
+        {
+            _bass += kBassAlpha * (samples[i] - _bass);
+            energy += _bass * _bass;
+        }
+        energy /= kChunkSamples;
+        _lastEnergy = energy;
 
-  // The mic on an M5Atom Echo is bolted onto basically an M5StickC.
-  // Not sure if this code will also work on an M5StickC; if not, we can use M5.Microphone there instead.
-  bool OpenEchoMic()
-  {
-    #define CONFIG_I2S_BCK_PIN 19
-    #define CONFIG_I2S_LRCK_PIN 33
-    #define CONFIG_I2S_DATA_PIN 22
-    #define CONFIG_I2S_DATA_IN_PIN 23
-    #define SPEAKER_I2S_NUMBER I2S_NUM_0
+        // rolling mean/variance over the ring
+        _ring[_ringIndex] = energy;
+        _ringIndex = (_ringIndex + 1) % kRingSize;
+        float mean = 0;
+        for(int i = 0; i < kRingSize; i++) mean += _ring[i];
+        mean /= kRingSize;
+        float var = 0;
+        for(int i = 0; i < kRingSize; i++) var += (_ring[i] - mean) * (_ring[i] - mean);
+        var /= kRingSize;
+        _meanEnergy = mean;
 
-    esp_err_t err = ESP_OK;
+        _chunksSinceBeat++;
+        if(energy > kEnergyFloor
+            && energy > mean + kSensitivity * sqrtf(var)
+            && _chunksSinceBeat >= kRefractoryChunks)
+        {
+            _chunksSinceBeat = 0;
+            _envelope = 1.0f;
+            if(kDebugAudio) Serial.printf("BEAT  rms %6.0f over avg %6.0f\n", sqrtf(energy), sqrtf(mean));
+        }
+    }
 
-    i2s_driver_uninstall(SPEAKER_I2S_NUMBER);
-    i2s_config_t i2s_config = {
-        .mode = (i2s_mode_t)(I2S_MODE_MASTER),
-        .sample_rate = 16000,
-        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT, // is fixed at 12bit, stereo, MSB
-        .channel_format = I2S_CHANNEL_FMT_ALL_RIGHT,
-        .communication_format = I2S_COMM_FORMAT_I2S,
-        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-        .dma_buf_count = 6,
-        .dma_buf_len = 60,
-    };
-    i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM);
+    bool _running = false;
+    int16_t _chunks[2][kChunkSamples];
+    int _nextChunk = 0;
 
-    err += i2s_driver_install(SPEAKER_I2S_NUMBER, &i2s_config, 0, NULL);
-    i2s_pin_config_t tx_pin_config;
-
-    tx_pin_config.bck_io_num = CONFIG_I2S_BCK_PIN;
-    tx_pin_config.ws_io_num = CONFIG_I2S_LRCK_PIN;
-    tx_pin_config.data_out_num = CONFIG_I2S_DATA_PIN;
-    tx_pin_config.data_in_num = CONFIG_I2S_DATA_IN_PIN;
-
-    err += i2s_set_pin(SPEAKER_I2S_NUMBER, &tx_pin_config);
-    err += i2s_set_clk(SPEAKER_I2S_NUMBER, 16000, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
-
-    return err == ESP_OK;
-  }
-
-  bool ReadEcho()
-  {
-    size_t bytes_read;
-    i2s_read(SPEAKER_I2S_NUMBER, (char *)(micdata + data_offset), 1024, &bytes_read, (100 / portTICK_RATE_MS));
-    data_offset += 1024;
-
-    // ?? do we read until bytes_read is less than 1024, or how do we know how much we got?
-  }
-
-  void AnalyzeAudio()
-  {
-    // ...
-  }
+    float _bass = 0;
+    float _ring[kRingSize] = {0};
+    int _ringIndex = 0;
+    int _chunksSinceBeat = 0;
+    float _lastEnergy = 0, _meanEnergy = 0;
+    float _envelope = 0;
+    TimeInterval _sinceDebugPrint = 0;
 };
 
+extern BeatDetector beats;
+
+#endif
