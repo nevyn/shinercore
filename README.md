@@ -18,6 +18,16 @@ others' colors.
 Since it only runs on the M5Atom and M5AtomS3, you'll need to get one of those
 and [configure Arduino IDE for it](https://docs.m5stack.com/en/arduino/arduino_development).
 
+For an M5Atom Echo, build with the Echo define so the microphone (beat
+detection) defaults on — no core defines it, so pass it yourself:
+
+```
+arduino-cli compile -b m5stack:esp32:m5stack_atom --build-property "compiler.cpp.extra_flags=-DARDUINO_M5STACK_ATOM_ECHO"
+```
+
+On any other build, beat detection can still be enabled at runtime with the
+`mic` setting if the Atom is wired with an SPM1423 like an Echo.
+
 Install the following libraries from
  the Arduino library manager:
 * M5Unified

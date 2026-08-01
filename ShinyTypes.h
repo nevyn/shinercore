@@ -72,7 +72,11 @@ struct ShinySettings
     int currentPresetIndex = 0;
     LedColorOrder ledColorOrder = LedOrderGRB;
     int ledCount = MAX_LED_COUNT/2;
+#ifdef ARDUINO_M5STACK_ATOM_ECHO
+    int micEnabled = 1; // an Echo's whole point is its microphone
+#else
     int micEnabled = 0; // only useful on an M5Atom Echo; see BeatDetector.h
+#endif
     ShinyLayerSettings *currentLayer()
     {
         return &layers[currentLayerIndex];

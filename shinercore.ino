@@ -77,14 +77,25 @@ void displayUpdate(M5GFX &display)
     #define GROVE2_PIN 2
     #define NEO_PIN 35
     #define HAS_GPIO_CONTROLS
+    #define HAS_PRESET_PINS
     const int presetPins[DIRECT_PRESET_PIN_COUNT] = {5, 6, 7, 8};
     #define CYCLE_PIN 39
     #define ENABLE_PIN 38
-#elif defined(ARDUINO_M5STACK_ATOM) || defined(ARDUINO_M5Stack_ATOM) || defined(ARDUINO_M5STACK_ATOM_ECHO)
+#elif defined(ARDUINO_M5STACK_ATOM_ECHO) // no core defines this; build with
+    // arduino-cli compile -b m5stack:esp32:m5stack_atom --build-property "compiler.cpp.extra_flags=-DARDUINO_M5STACK_ATOM_ECHO"
     #define GROVE1_PIN 26
     #define GROVE2_PIN 32
     #define NEO_PIN 27
     #define HAS_GPIO_CONTROLS
+    // no preset pins: 19/22/23/33 belong to the Echo's speaker and mic
+    #define CYCLE_PIN 21
+    #define ENABLE_PIN 25
+#elif defined(ARDUINO_M5STACK_ATOM) || defined(ARDUINO_M5Stack_ATOM)
+    #define GROVE1_PIN 26
+    #define GROVE2_PIN 32
+    #define NEO_PIN 27
+    #define HAS_GPIO_CONTROLS
+    #define HAS_PRESET_PINS
     const int presetPins[DIRECT_PRESET_PIN_COUNT] = {22, 19, 23, 33};
     #define CYCLE_PIN 21
     #define ENABLE_PIN 25
@@ -110,11 +121,13 @@ void setup(void) {
 
     commsSetup();
 
-#ifdef HAS_GPIO_CONTROLS
+#ifdef HAS_PRESET_PINS
     for(int i = 0; i < DIRECT_PRESET_PIN_COUNT; i++)
     {
         pinMode(presetPins[i], INPUT_PULLUP);
     }
+#endif
+#ifdef HAS_GPIO_CONTROLS
     pinMode(CYCLE_PIN, INPUT_PULLUP);
     pinMode(ENABLE_PIN, INPUT_PULLUP);
 #endif
@@ -261,9 +274,10 @@ void update(void)
         cycleToNextPreset();
     }
 
-#ifdef HAS_GPIO_CONTROLS
-    // GPIO direct preset buttons: pull low to select that preset. On an Echo
-    // these pins are the mic and speaker, so they're dead while the mic runs.
+#ifdef HAS_PRESET_PINS
+    // GPIO direct preset buttons: pull low to select that preset. The mic
+    // claims these pins on an Atom wired like an Echo, so they're dead while
+    // it runs.
     if(!localPrefs.micEnabled)
     {
         for(int i = 0; i < DIRECT_PRESET_PIN_COUNT; i++)
@@ -274,6 +288,8 @@ void update(void)
             }
         }
     }
+#endif
+#ifdef HAS_GPIO_CONTROLS
 
     // GPIO cycle button: same behavior as built-in button
     bool cyclePinNow = (digitalRead(CYCLE_PIN) == LOW);
