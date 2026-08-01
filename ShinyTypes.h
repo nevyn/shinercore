@@ -82,6 +82,8 @@ struct ShinySettings
     int micEnabled = 0; // only useful on an M5Atom Echo; see BeatDetector.h
 #endif
     int meshEnabled = 1; // sync with nearby shinercores; see Mesh.h
+    int meshShow = 1;    // play neighbors' presets in the shared carousel
+    int carouselBeats = 8; // beats each carousel slot plays for
     ShinyLayerSettings *currentLayer()
     {
         return &layers[currentLayerIndex];

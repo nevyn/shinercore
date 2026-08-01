@@ -160,9 +160,9 @@ void loop(void) {
     
     update();
     commsUpdate(delta);
-    applyDerivedState(delta);
     beats.update(delta);
-    mesh.update(delta);
+    mesh.update(delta); // may pull the beat grid; before deriving render state
+    applyDerivedState(delta);
 
     ledstrip.fill(CRGB::Black); // TODO: clear with layer 0 instead, to allow feedback patterns
     ansys.playElapsedTime(delta);
@@ -211,7 +211,8 @@ void applyDerivedState(TimeInterval dt)
 
     for(int i = 0; i < LAYER_COUNT; i++)
     {
-        const ShinyLayerSettings &target = localPrefs.layers[i];
+        // own settings, or whichever preset the mesh carousel has on stage
+        const ShinyLayerSettings &target = *mesh.carouselLayers(i);
         ShinyLayerSettings &shown = renderedLayers[i];
         shown.mainColor = slewColor(shown.mainColor, target.mainColor, alpha);
         shown.secondaryColor = slewColor(shown.secondaryColor, target.secondaryColor, alpha);

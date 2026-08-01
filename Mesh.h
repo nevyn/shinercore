@@ -144,6 +144,7 @@ public:
                 if(kDebugMesh) Serial.printf("mesh: lost %s\n", macStr(n.mac));
             }
         }
+        rebuildSlots();
 
         _sinceTx += delta;
         if(_sinceTx >= _txInterval)
@@ -185,6 +186,27 @@ public:
         int count = 0;
         for(const auto &n : _neighbors) count += n.used;
         return count;
+    }
+
+    // The carousel: with meshShow on, every core plays every core's current
+    // preset, carouselBeats each, switching in lockstep because the slot
+    // number derives from the shared beat grid. Layers cross over one at a
+    // time across the first kCarouselFadeBeats of a slot (deterministically
+    // random per slot, same on every core), overlapping into a tween as the
+    // rendered settings slew to each new target.
+    const ShinyLayerSettings *carouselLayers(int layer)
+    {
+        if(!_running || !localPrefs.meshShow || _slotCount <= 1) return &localPrefs.layers[layer];
+
+        double bt = beats.beatTime();
+        if(bt < 0) bt = 0;
+        int per = localPrefs.carouselBeats < 1 ? 1 : localPrefs.carouselBeats;
+        long long slotNumber = (long long)(bt / per);
+        double intoSlot = bt - (double)slotNumber * per;
+        float threshold = (mix(layer * 7919u + (uint32_t)slotNumber) % 1000) / 1000.0f * kCarouselFadeBeats;
+        long long effective = intoSlot >= threshold ? slotNumber : slotNumber - 1;
+        const Slot &slot = _slots[(int)(((effective % _slotCount) + _slotCount) % _slotCount)];
+        return &slot.layers[layer];
     }
 
 private:
@@ -372,6 +394,38 @@ private:
         return slot;
     }
 
+    struct Slot
+    {
+        const ShinyLayerSettings *layers;
+        const uint8_t *mac;
+    };
+    static constexpr float kCarouselFadeBeats = 2.0f; // layers cross over within this window
+
+    void rebuildSlots()
+    {
+        _slotCount = 0;
+        _slots[_slotCount++] = {localPrefs.layers, _mac};
+        for(auto &n : _neighbors)
+        {
+            if(n.used && n.hasPreset) _slots[_slotCount++] = {n.preset, n.mac};
+        }
+        // sorted by mac so every core agrees on the running order
+        for(int i = 1; i < _slotCount; i++)
+        {
+            for(int j = i; j > 0 && memcmp(_slots[j].mac, _slots[j-1].mac, 6) < 0; j--)
+            {
+                std::swap(_slots[j], _slots[j-1]);
+            }
+        }
+    }
+
+    static uint32_t mix(uint32_t x)
+    {
+        x = ((x >> 16) ^ x) * 0x45d9f3b;
+        x = ((x >> 16) ^ x) * 0x45d9f3b;
+        return (x >> 16) ^ x;
+    }
+
     static const char *macStr(const uint8_t *mac)
     {
         static char buf[18];
@@ -417,6 +471,8 @@ private:
     static Mesh *_instance;
     bool _running = false;
     uint8_t _mac[6] = {0};
+    Slot _slots[1 + kMaxNeighbors];
+    int _slotCount = 0;
     ShinyLayerSettings _seenPreset[LAYER_COUNT];
     ShinyLayerSettings _sentPreset[LAYER_COUNT];
     TimeInterval _sincePresetChange = 0;
