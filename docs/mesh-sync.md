@@ -62,14 +62,23 @@ slew keeps those moments graceful rather than correct.
 | `meshShow` | 1 | play the carousel; off = always your own preset (still synced to the grid) |
 | `carouselBeats` | 8 | beats per carousel slot |
 
+## Lessons from the first two-node session (each now a rule)
+
+| rule | failure it fixes |
+|---|---|
+| beat frames carry leaderMac; never apply a follower's grid | the following *flag* is a beacon-interval stale, so two booting cores followed each other and their mutually-pulled grids oscillated 85-135bpm; on a mutual follow the lower mac leads |
+| followers advertise 0.9x the leader's *latest* confidence, not their own | inherited confidence decays over 20s while a mic's real confidence drops in one breakdown; a follower's fossil copy of the leader's grid outranked the live mic it came from |
+| only a mic may defect on confidence | a micless follower's confidence is all inherited; "outranking" its leader just crowns the fossil |
+
 ## Verified / unverified (2026-08-01)
 
-Verified on one AtomS3: beacons TX at 100% send-callback success alongside BLE
-advertising, host tests for ranking/slots/layouts. **Not yet verified** (needs the
-Echo back from fork A, or any second device): live two-node grid convergence, carousel
-lockstep, BLE app connect during mesh (coex under real BLE traffic), two confident
-mics fighting (should resolve by MAC; watch for period thrash). Power draw of the
-wifi radio is unmeasured — `mesh 0` is the fallback.
+Verified live, Echo + AtomS3 on a desk with real music (2026-08-02): the Echo leads
+at conf 0.95+, the S3 follows within 0.3% bpm and ±0.05 beats of phase, confidence
+0.9x passed through, zero rx drops, no leadership flapping over the observed window.
+**Not yet verified**: carousel lockstep by eye (needs strips on both), BLE app
+connect during mesh traffic, two confident mics fighting (should resolve by MAC;
+watch for period thrash). Power draw of the wifi radio is unmeasured — `mesh 0` is
+the fallback.
 
 Debug serial: `mesh tx/rx` counters every 5s, `MESH err` per applied beacon,
 following/leading transitions, `hello`/`lost` per neighbor.

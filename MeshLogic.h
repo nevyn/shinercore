@@ -7,7 +7,7 @@
 // The pure half of the mesh: wire formats and decision math, no radio.
 // Host-tested in test/meshtest.cpp; Mesh.h owns everything with side effects.
 
-#define kMeshVersion 1
+#define kMeshVersion 2
 #define kMeshFlagHasMic 1
 #define kMeshFlagConfident 2
 #define kMeshFlagFollowing 4 // this grid is itself relayed from a leader
@@ -28,6 +28,11 @@ struct __attribute__((packed)) MeshBeatFrame
     double beatTime;    // fractional beats since sender's boot
     float confidence;   // 0..1
     uint8_t color[3];   // sender's layer 0 mainColor
+    uint8_t leaderMac[6]; // whom the sender follows; zeros when leading.
+                          // Lets a core refuse to take the clock from its own
+                          // follower - the following FLAG alone is a beacon
+                          // interval stale, which let two booting cores follow
+                          // each other and oscillate.
 };
 
 // A neighbor's current preset, one non-empty layer per entry. Ten of these

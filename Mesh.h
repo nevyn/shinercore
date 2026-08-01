@@ -173,16 +173,30 @@ private:
         MeshBeatFrame frame = {};
         frame.version = kMeshVersion;
         frame.type = MeshFrameBeat;
+        // A follower advertises a live pass-through of its leader's authority,
+        // not its own inherited confidence: that decays over 20s while the
+        // leader's real confidence can drop in one breakdown, letting a
+        // follower's fossil grid outrank the live mic it was copied from.
+        float advertised = beats.confidence();
+        if(_following)
+        {
+            advertised = 0;
+            for(const auto &l : _neighbors)
+            {
+                if(l.used && memcmp(l.mac, _leaderMac, 6) == 0) { advertised = 0.9f * l.beat.confidence; break; }
+            }
+        }
         frame.flags = (localPrefs.micEnabled ? kMeshFlagHasMic : 0)
-                    | (beats.confidence() > 0.4f ? kMeshFlagConfident : 0)
+                    | (advertised > 0.4f ? kMeshFlagConfident : 0)
                     | (_following ? kMeshFlagFollowing : 0);
         frame.period = beats.period();
         frame.phase = beats.phase();
         frame.beatTime = beats.beatTime();
-        frame.confidence = beats.confidence();
+        frame.confidence = advertised;
         frame.color[0] = localPrefs.layers[0].mainColor.r;
         frame.color[1] = localPrefs.layers[0].mainColor.g;
         frame.color[2] = localPrefs.layers[0].mainColor.b;
+        if(_following) memcpy(frame.leaderMac, _leaderMac, 6);
 
         _txCount++;
         if(esp_now_send(kBroadcastAddr, (const uint8_t*)&frame, sizeof(frame)) != ESP_OK)
@@ -298,7 +312,25 @@ private:
     void considerFollowing(const MeshNeighbor &n)
     {
         bool isLeader = _following && memcmp(_leaderMac, n.mac, 6) == 0;
-        if(isLeader && meshOutranks(rankSelf(), rankOf(n)))
+
+        // Never apply the grid of our own follower: that's our own clock
+        // reflected back, and two cores pulling each other's phase oscillate.
+        // On a mutual follow (both decided on flags a beacon-interval stale),
+        // the lower mac takes the lead; the higher keeps following but applies
+        // nothing until the leader's beacons stop naming us.
+        if(memcmp(n.beat.leaderMac, _mac, 6) == 0)
+        {
+            if(isLeader && memcmp(_mac, n.mac, 6) < 0)
+            {
+                _following = false;
+                if(kDebugMesh) Serial.printf("mesh: mutual follow with %s resolved, leading\n", macStr(n.mac));
+            }
+            return;
+        }
+        // Only a mic may defect on confidence: a micless follower's confidence
+        // is all inherited, so "outranking" its leader would just crown a
+        // fossil copy of that leader's own grid.
+        if(isLeader && localPrefs.micEnabled && meshOutranks(rankSelf(), rankOf(n)))
         {
             _following = false;
             if(kDebugMesh) Serial.printf("mesh: outrank %s, own grid again\n", macStr(n.mac));
