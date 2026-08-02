@@ -53,9 +53,8 @@ tau writes at a patched core and yanked the connection mid-flight — it kept
 rendering and meshing, echoed notifies at exactly the 50ms limit, and made one
 debounced NVS write. An unpatched core in the same room hung within a minute of
 a mere connect+subscribe+read+abrupt-disconnect from the same script. The storm
-harness lives and dies with its session scratchpad; it's ~100 lines of
-CBCentralManager worth rewriting if needed (subscribe, write storm, cancel at
-0.8s, reconnect pinned to the same peripheral identifier, reread).
+harness is test/blestorm.swift (macOS, CoreBluetooth; usage in its header —
+run it from a real terminal, TCC kills agent shells).
 
 ## Timing contracts the app can rely on
 
