@@ -119,7 +119,9 @@ void setup(void) {
 
     FastLED.addLeds<WS2811, GROVE1_PIN, RGB>(rgbs, MAX_LED_COUNT);
     FastLED.addLeds<WS2811, GROVE2_PIN, RGB>(rgbs, MAX_LED_COUNT);
-    FastLED.addLeds<WS2811, NEO_PIN, RGB>(btnled, 1);
+    // The builtin pixel is GRB hardware on every variant, and unlike the strip
+    // buffer it never passes through applyLedColorOrder
+    FastLED.addLeds<WS2811, NEO_PIN, GRB>(btnled, 1);
     ledstrip.fill(CRGB::Black);
     FastLED.show();
 
