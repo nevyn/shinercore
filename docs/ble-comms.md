@@ -32,12 +32,15 @@ range, 2.4GHz contention with the ESP-NOW mesh), stock ArduinoBLE never resets
    debounces 0.5s of settle, so a drag is one flash write, not hundreds. The pending
    NVS key is captured at set time, so a cursor move mid-debounce can't misfile it;
    `loadLayers` flushes pending persists before reading the store back.
-2. **ArduinoBLE local patch**: `_pendingPkt = 0` on disconnect, in
-   `~/Dev/Arduino/libraries/ArduinoBLE/src/utility/HCI.cpp` (`EVT_DISCONN_COMPLETE`
-   handler, marked "ShinerCore local patch"). That library is **not** a git checkout
-   and not pinned — a library update silently reverts the fix. If sliders ever wedge
-   a core again, check this patch is still present. Correct upstream too: after a
-   disconnect the controller has flushed that link's packets and reports nothing.
+2. **ArduinoBLE fork**: `_pendingPkt = 0` on disconnect (`EVT_DISCONN_COMPLETE`
+   handler in `src/utility/HCI.cpp`). `~/Dev/Arduino/libraries/ArduinoBLE` is a git
+   checkout of github.com/nevyn/ArduinoBLE, branch `shinercore` = upstream tag 1.3.6
+   plus that one commit. On any other build machine, replace the library-manager copy
+   with the same checkout:
+   `git clone -b shinercore git@github.com:nevyn/ArduinoBLE.git ~/Dev/Arduino/libraries/ArduinoBLE`.
+   The fix is correct for upstream too (after a disconnect the controller has flushed
+   that link's packets and reports nothing), modulo multi-connection credit
+   accounting — worth a PR someday.
 3. **Task watchdog** (shinercore.ino setup): 8s, panic=reboot. Any residual hang —
    this one, or the next one — becomes a short outage that reboots into
    NVS-restored settings instead of a dead jacket.
