@@ -7,7 +7,9 @@ mkdir -p build
 clang++ -std=c++17 -I stubs -o build/codectest codectest.cpp ../ShinyTypes.cpp
 clang++ -std=c++17 -o build/migrationtest migrationtest.cpp
 clang++ -std=c++17 -I stubs -o build/meshtest meshtest.cpp
+clang++ -std=c++17 -I stubs -o build/proptest proptest.cpp ../ShinyTypes.cpp
 
 ./build/codectest
 ./build/migrationtest
 ./build/meshtest
+./build/proptest

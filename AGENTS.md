@@ -69,8 +69,9 @@ audio-testing workflow: **docs/building-and-testing.md**. In short:
 The iOS app lives in ../ShinerCoreRemote (separate repo). A new characteristic needs:
 firmware property (Comms.h) + a PropertyKey in CoreProps (ShinerCoreKit,
 Model/PropertyKey.swift) + a control box in the app's tab views + if enum-valued, the
-documentation characteristic JSON. The app subscribes to notifications; that covers
-every value change only because publish() is the sole change path — keep it that way.
+documentation characteristic JSON. The app subscribes to notifications; every settled
+value reaches it only because publish() is the sole change path — keep it that way.
+(Notifies are only-latest and rate-limited; intermediate values may never be sent.)
 
 ## OverAnimate
 

@@ -166,12 +166,18 @@ void commsUpdate(TimeInterval delta)
     // 8, a slider drag's stream) spaced out never exhausts the controller's
     // ACL credits, which ArduinoBLE busy-waits on — against a stalling link
     // that wait wedged the whole loop (see docs/ble-comms.md).
+    // Cursor echoes jump the queue: the app must learn what the per-layer
+    // characteristics address before their re-published values reach it.
     static TimeInterval sinceFlush = 1;
     static size_t nextFlush = 0;
     sinceFlush += delta;
     if(sinceFlush >= 0.05)
     {
-        for(size_t i = 0; i < props.size(); i++)
+        if(presetProp.flushPublish() || layerProp.flushPublish())
+        {
+            sinceFlush = 0;
+        }
+        else for(size_t i = 0; i < props.size(); i++)
         {
             if(props[(nextFlush + i) % props.size()]->flushPublish())
             {

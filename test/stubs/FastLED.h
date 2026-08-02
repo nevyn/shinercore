@@ -23,6 +23,7 @@ public:
     String &operator+=(const String &o) { s += o.s; return *this; }
     bool operator==(const String &o) const { return s == o.s; }
     bool operator==(const char *o) const { return s == o; }
+    bool operator!=(const String &o) const { return s != o.s; }
 };
 inline String operator+(const char *a, const String &b) { return String(std::string(a) + b.s); }
 
