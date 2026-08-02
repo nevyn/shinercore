@@ -13,6 +13,13 @@
 // the field held at construction (i.e. the struct initializer).
 // Every change goes through publish(), so subscribed centrals get notified of
 // all of them: another central's writes, the layer/preset cursor fanout, loads.
+//
+// Writes only touch RAM; the projections trail behind. publish() stages the
+// latest value for commsUpdate's rate-limited flush (a notify burst can
+// exhaust the BLE controller's ACL credits, and ArduinoBLE busy-waits on
+// them), and persist() debounces until the value settles (a slider drag is
+// otherwise a flash commit per tick).
+static const float kPersistSettleSeconds = 0.5;
 class Property
 {
 public:
@@ -34,27 +41,64 @@ public:
             handleWrite(chara.value());
         }
     }
-protected:
-    virtual void handleWrite(const String &wire) = 0;
-    void publish(const String &encoded) { chara.writeValue(encoded); }
-    void persist(const String &curKey, const String &encoded, const String &encodedDefault)
+    void update(float delta)
     {
+        if(_persistPending && (_sincePersistStage += delta) >= kPersistSettleSeconds)
+        {
+            flushPersist();
+        }
+    }
+    // Sends the staged value (GATT store + notify). True if anything was sent.
+    bool flushPublish()
+    {
+        if(!_publishDirty) return false;
+        _publishDirty = false;
+        chara.writeValue(_publishValue);
+        return true;
+    }
+    void flushPersist()
+    {
+        if(!_persistPending) return;
+        _persistPending = false;
         // A value at its default is stored as absence, which is what lets
         // Migration.h and presetHasAnimations() treat "" as unconfigured
-        if(encoded == encodedDefault)
+        if(_persistValue == _persistDefault)
         {
-            prefs.remove(curKey.c_str());
+            prefs.remove(_persistKey.c_str());
         }
-        else if(prefs.putString(curKey.c_str(), encoded) == 0)
+        else if(prefs.putString(_persistKey.c_str(), _persistValue) == 0)
         {
             logger.println("failed to store preferences!"); // value is still live in RAM; carry on
         }
-        logger.print(curKey); logger.print(" = "); logger.println(encoded);
+        logger.print(_persistKey); logger.print(" = "); logger.println(_persistValue);
+    }
+protected:
+    virtual void handleWrite(const String &wire) = 0;
+    void publish(const String &encoded)
+    {
+        _publishValue = encoded;
+        _publishDirty = true;
+    }
+    void persist(const String &curKey, const String &encoded, const String &encodedDefault)
+    {
+        // The key is captured now: if the layer/preset cursor moves before the
+        // debounce settles, the pending write still lands where it was aimed
+        if(_persistPending && _persistKey != curKey) flushPersist();
+        _persistKey = curKey;
+        _persistValue = encoded;
+        _persistDefault = encodedDefault;
+        _persistPending = true;
+        _sincePersistStage = 0;
     }
     BLEStringCharacteristic chara;
     String key;
     BLEDescriptor nameDescriptor;
     BLEDescriptor formatDescriptor;
+    bool _publishDirty = false;
+    String _publishValue;
+    bool _persistPending = false;
+    String _persistKey, _persistValue, _persistDefault;
+    float _sincePersistStage = 0;
 };
 
 class GlobalPropertyBase : public Property

@@ -67,6 +67,11 @@ std::vector<Property*> props = [&] {
 // republish the cursor layer's values to bluetooth
 void loadLayers()
 {
+    // debounced writes must land before the store is read back
+    for(const auto& prop: props)
+    {
+        prop->flushPersist();
+    }
     for(const auto& prop: layerProps)
     {
         for(int layer = 0; layer < LAYER_COUNT; layer++)
@@ -114,6 +119,12 @@ void commsSetup(void)
     {
         prop->load();
     }
+    // No central yet, so these can't block; the GATT store must be populated
+    // before advertising rather than trickling out through the flush limiter
+    for(const auto& prop: props)
+    {
+        prop->flushPublish();
+    }
 
     // Add documentation characteristic (read-only, not stored)
     documentationChara.addDescriptor(documentationNameDescriptor);
@@ -148,5 +159,26 @@ void commsUpdate(TimeInterval delta)
     for(const auto& prop: props)
     {
         prop->poll();
+        prop->update(delta);
+    }
+
+    // One staged publish per 50ms, round-robin: a burst (the cursor fanout's
+    // 8, a slider drag's stream) spaced out never exhausts the controller's
+    // ACL credits, which ArduinoBLE busy-waits on — against a stalling link
+    // that wait wedged the whole loop (see docs/ble-comms.md).
+    static TimeInterval sinceFlush = 1;
+    static size_t nextFlush = 0;
+    sinceFlush += delta;
+    if(sinceFlush >= 0.05)
+    {
+        for(size_t i = 0; i < props.size(); i++)
+        {
+            if(props[(nextFlush + i) % props.size()]->flushPublish())
+            {
+                nextFlush = (nextFlush + i + 1) % props.size();
+                sinceFlush = 0;
+                break;
+            }
+        }
     }
 }
