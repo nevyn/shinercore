@@ -4,6 +4,7 @@
 #include <SubStrip.h>
 #include <ArduinoBLE.h>
 #include <Preferences.h>
+#include <esp_task_wdt.h>
 #include <algorithm>
 #include "Util.h"
 #include "BeatDetector.h"
@@ -144,10 +145,17 @@ void setup(void) {
     {
         ansys.addAnimation(&layerAnimations[i]);
     }
+
+    // A hang anywhere (a wedged radio stack, a stuck driver) reboots into
+    // working lights instead of a dead jacket; settings reload from NVS.
+    // After commsSetup, so its deliberate can't-even-boot halts stay halts.
+    esp_task_wdt_init(8, true);
+    esp_task_wdt_add(NULL);
 }
 
 unsigned long lastMillis;
 void loop(void) {
+    esp_task_wdt_reset();
     M5.update();
 
     unsigned long now = millis();
@@ -157,7 +165,8 @@ void loop(void) {
     unsigned long diff = now - lastMillis;
     lastMillis = now;
     TimeInterval delta = diff/1000.0;
-    
+    if(delta > 0.1) delta = 0.1; // a stalled frame plays out in slow motion, not as a teleport
+
     update();
     commsUpdate(delta);
     beats.update(delta);
