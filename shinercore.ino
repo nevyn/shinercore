@@ -179,6 +179,15 @@ void loop(void) {
     ledstrip.fill(CRGB::Black); // TODO: clear with layer 0 instead, to allow feedback patterns
     ansys.playElapsedTime(delta);
     applyLedColorOrder(rgbs, localPrefs.ledCount);
+    if(localPrefs.maxCurrentMa)
+    {
+        // Both outputs mirror this buffer, so each gets half the budget. Not
+        // FastLED.setMaxPowerInVoltsAndMilliamps: that sums the controllers,
+        // registered at MAX_LED_COUNT, and the phantom LEDs' ~1mA/LED dark
+        // power eats most of the budget.
+        FastLED.setBrightness(calculate_max_brightness_for_power_vmA(
+            rgbs, localPrefs.ledCount, FastLED.getBrightness(), 5, localPrefs.maxCurrentMa / 2));
+    }
     FastLED.show();
 
     if(M5.getDisplayCount() > 0)

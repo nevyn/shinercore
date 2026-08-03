@@ -69,7 +69,9 @@ Recommended configuration bolded.
 BTF-Lighting (Amazon), or AliExpress for bulk reels. DigiKey has limited strip selection.
 
 **Power note:** At 5V, long runs need power injection every ~3m at 60 LEDs/m
-to avoid voltage drop and color shift.
+to avoid voltage drop and color shift. The `maxCurrent` setting (mA, 0 = off)
+caps the frame's total draw across both outputs by dimming, protecting the
+battery from brownout on bright frames; set it to what your pack can deliver.
 
 ## Resources
 https://btprodspecificationrefs.blob.core.windows.net/assigned-numbers/Assigned%20Number%20Types/Assigned_Numbers.pdf

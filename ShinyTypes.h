@@ -76,6 +76,9 @@ struct ShinySettings
     int currentPresetIndex = 0;
     LedColorOrder ledColorOrder = LedOrderGRB;
     int ledCount = MAX_LED_COUNT/2;
+    // Battery budget across both strip outputs, 0 = uncapped. A hot frame dims
+    // instead of browning out the pack; set high enough that it only catches spikes.
+    int maxCurrentMa = 0;
 #ifdef ARDUINO_M5STACK_ATOM_ECHO
     int micEnabled = 1; // an Echo's whole point is its microphone
 #else
