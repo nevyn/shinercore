@@ -41,6 +41,8 @@ GlobalProperty<LedColorOrder> ledColorOrderProp("f3b7c8a1-5d2e-4f19-8c6a-9e1d0b2
 GlobalProperty<int> micProp("519f61ae-bb92-425f-90fa-29aabc63520d", "mic", &localPrefs.micEnabled, 0, 1);
 GlobalProperty<int> meshProp("808fb660-9eba-45c2-862c-be18a55195ed", "mesh", &localPrefs.meshEnabled, 0, 1);
 GlobalProperty<int> meshShowProp("f4d7b6bd-aeb2-4ea1-a5fc-254e3db10200", "meshShow", &localPrefs.meshShow, 0, 1);
+void meshGroupChanged(); // defined in the sketch, next to the mesh instance
+GlobalProperty<String> meshGroupProp("12239682-6d25-45d1-a3b5-182dfa6cf106", "meshGroup", &localPrefs.meshGroup, meshGroupChanged);
 GlobalProperty<int> carouselBeatsProp("1bc3f537-b285-4def-a2f9-285dae0b2aaa", "carouselBeats", &localPrefs.carouselBeats, 1, 64);
 
 // per-layer settings
@@ -53,7 +55,7 @@ LayerProperty<LayerBlendMode> blendModeProp("03686c5c-6e6f-44f0-943f-db6388d9fdd
 LayerProperty<int, AnimationCodec> animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", &ShinyLayerSettings::animationIndex);
 LayerProperty<int> beatSyncProp("6f97efc2-096e-4704-9feb-f9c2f41577ee", "beatSync", &ShinyLayerSettings::beatSync, 0, 1);
 
-std::vector<GlobalPropertyBase*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &presetProp, &ledColorOrderProp, &ledCountProp, &micProp, &meshProp, &meshShowProp, &carouselBeatsProp};
+std::vector<GlobalPropertyBase*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &presetProp, &ledColorOrderProp, &ledCountProp, &micProp, &meshProp, &meshShowProp, &meshGroupProp, &carouselBeatsProp};
 std::vector<LayerPropertyBase*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp, &beatSyncProp};
 std::vector<Property*> props = [&] {
     std::vector<Property*> v;

@@ -81,8 +81,9 @@ struct ShinySettings
 #else
     int micEnabled = 0; // only useful on an M5Atom Echo; see BeatDetector.h
 #endif
-    int meshEnabled = 1; // sync with nearby shinercores; see Mesh.h
+    int meshEnabled = 0; // sync with nearby shinercores; see Mesh.h
     int meshShow = 1;    // play neighbors' presets in the shared carousel
+    String meshGroup;    // only mesh with cores in the same group; "" is a group too
     int carouselBeats = 8; // beats each carousel slot plays for
     ShinyLayerSettings *currentLayer()
     {

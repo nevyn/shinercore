@@ -3,6 +3,7 @@
 #include "../ShinyTypes.h"
 #include "../MeshLogic.h"
 #include <cstdio>
+#include <cstddef>
 
 static int failures = 0;
 static void check(const char *what, bool ok) {
@@ -16,9 +17,20 @@ static const uint8_t macB[6] = {0x22,0,0,0,0,2};
 int main() {
     printf("frame layouts\n");
     check("beat frame fits", sizeof(MeshBeatFrame) <= 250);
-    check("beat frame is packed", sizeof(MeshBeatFrame) == 3 + 4 + 4 + 8 + 4 + 3 + 6);
+    check("beat frame is packed", sizeof(MeshBeatFrame) == 2 + 4 + 1 + 4 + 4 + 8 + 4 + 3 + 6);
     check("full preset frame fits ESP-NOW", sizeof(MeshPresetFrame) <= 250);
     check("preset layer is packed", sizeof(MeshPresetLayer) == 4 + 3 + 3 + 12);
+    check("beat frame starts with the common header",
+          offsetof(MeshBeatFrame, groupHash) == offsetof(MeshFrameHeader, groupHash));
+    check("preset frame starts with the common header",
+          offsetof(MeshPresetFrame, groupHash) == offsetof(MeshFrameHeader, groupHash));
+
+    printf("group hash\n");
+    check("empty group is the FNV basis", meshGroupHash("") == 2166136261u);
+    check("groups differ", meshGroupHash("kidsville") != meshGroupHash("dustfish"));
+    check("case-insensitive", meshGroupHash("Kidsville") == meshGroupHash("kidsville"));
+    check("trims whitespace", meshGroupHash("  kidsville \t") == meshGroupHash("kidsville"));
+    check("whitespace-only is the empty group", meshGroupHash("   ") == meshGroupHash(""));
 
     printf("ranking\n");
     check("confidence dominates", meshOutranks({0.9f,false,false,macB}, {0.5f,false,true,macA}));

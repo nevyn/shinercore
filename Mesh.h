@@ -138,8 +138,8 @@ public:
             if(_sinceDebugPrint > 5.0)
             {
                 _sinceDebugPrint = 0;
-                Serial.printf("mesh tx %lu ok %lu fail %lu | rx %lu drop %lu | %d neighbors\n",
-                              _txCount, _txOkCount, _txFailCount, _rxCount, _rxDropCount, neighborCount());
+                Serial.printf("mesh tx %lu ok %lu fail %lu | rx %lu drop %lu foreign %lu | %d neighbors\n",
+                              _txCount, _txOkCount, _txFailCount, _rxCount, _rxDropCount, _rxForeignCount, neighborCount());
             }
         }
     }
@@ -149,6 +149,13 @@ public:
         int count = 0;
         for(const auto &n : _neighbors) count += n.used;
         return count;
+    }
+
+    // The group setting changed: neighbors from the old group aren't ours to hear
+    void groupChanged()
+    {
+        for(auto &n : _neighbors) n.used = false;
+        _following = false;
     }
 
     // The carousel: with meshShow on, every core plays every core's current
@@ -173,6 +180,7 @@ private:
         MeshBeatFrame frame = {};
         frame.version = kMeshVersion;
         frame.type = MeshFrameBeat;
+        frame.groupHash = meshGroupHash(localPrefs.meshGroup.c_str());
         // A follower advertises a live pass-through of its leader's authority,
         // not its own inherited confidence: that decays over 20s while the
         // leader's real confidence can drop in one breakdown, letting a
@@ -210,6 +218,7 @@ private:
         MeshPresetFrame frame = {};
         frame.version = kMeshVersion;
         frame.type = MeshFramePreset;
+        frame.groupHash = meshGroupHash(localPrefs.meshGroup.c_str());
         for(int i = 0; i < LAYER_COUNT; i++)
         {
             const ShinyLayerSettings &l = localPrefs.layers[i];
@@ -237,8 +246,15 @@ private:
 
     void handleFrame(const uint8_t *mac, const uint8_t *data, int len)
     {
-        if(len < 2 || data[0] != kMeshVersion) return;
-        switch(data[1])
+        if(len < (int)sizeof(MeshFrameHeader)) return;
+        const MeshFrameHeader *header = (const MeshFrameHeader*)data;
+        if(header->version != kMeshVersion) return;
+        if(header->groupHash != meshGroupHash(localPrefs.meshGroup.c_str()))
+        {
+            _rxForeignCount++; // someone else's camp
+            return;
+        }
+        switch(header->type)
         {
             case MeshFrameBeat:
                 if(len == sizeof(MeshBeatFrame)) handleBeat(mac, *(const MeshBeatFrame*)data);
@@ -464,7 +480,7 @@ private:
     TimeInterval _sinceTx = 0;
     TimeInterval _txInterval = 0;
     TimeInterval _sinceDebugPrint = 0;
-    unsigned long _txCount = 0, _txOkCount = 0, _txFailCount = 0, _rxCount = 0, _rxDropCount = 0;
+    unsigned long _txCount = 0, _txOkCount = 0, _txFailCount = 0, _rxCount = 0, _rxDropCount = 0, _rxForeignCount = 0;
 
 public:
     Mesh() { _instance = this; }

@@ -7,7 +7,7 @@
 // The pure half of the mesh: wire formats and decision math, no radio.
 // Host-tested in test/meshtest.cpp; Mesh.h owns everything with side effects.
 
-#define kMeshVersion 2
+#define kMeshVersion 3
 #define kMeshFlagHasMic 1
 #define kMeshFlagConfident 2
 #define kMeshFlagFollowing 4 // this grid is itself relayed from a leader
@@ -18,10 +18,39 @@ enum MeshFrameType : uint8_t
     MeshFramePreset = 2,
 };
 
+// Group gating: you only mesh with your own camp. The group name is normalized
+// (trimmed, ASCII-lowercased, so two people typing the camp name agree) and
+// FNV-1a hashed into every frame header; receivers drop foreign hashes. Not
+// security, just fencing - and the empty string is a group like any other.
+static inline uint32_t meshGroupHash(const char *group)
+{
+    const char *s = group;
+    const char *e = group + strlen(group);
+    while(s < e && (*s == ' ' || *s == '\t')) s++;
+    while(e > s && (e[-1] == ' ' || e[-1] == '\t')) e--;
+    uint32_t h = 2166136261u;
+    for(; s < e; s++)
+    {
+        char c = *s;
+        if(c >= 'A' && c <= 'Z') c += 32;
+        h = (h ^ (uint8_t)c) * 16777619u;
+    }
+    return h;
+}
+
+// Every frame starts with this; the group check happens before the type switch
+struct __attribute__((packed)) MeshFrameHeader
+{
+    uint8_t version;
+    uint8_t type;
+    uint32_t groupHash;
+};
+
 struct __attribute__((packed)) MeshBeatFrame
 {
     uint8_t version;
     uint8_t type;
+    uint32_t groupHash;
     uint8_t flags;      // kMeshFlag*
     float period;       // seconds per beat
     float phase;        // 0..1 within the current beat, at send time
@@ -54,6 +83,7 @@ struct __attribute__((packed)) MeshPresetFrame
 {
     uint8_t version;
     uint8_t type;
+    uint32_t groupHash;
     uint8_t layerCount;
     MeshPresetLayer layers[LAYER_COUNT]; // only layerCount are sent
 };

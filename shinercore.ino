@@ -56,6 +56,7 @@ LayerAnimation layerAnimations[LAYER_COUNT] = {
 #include "Mesh.h"
 Mesh mesh;
 Mesh *Mesh::_instance = nullptr;
+void meshGroupChanged() { mesh.groupChanged(); }
 
 
 

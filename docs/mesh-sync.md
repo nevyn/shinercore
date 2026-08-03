@@ -58,7 +58,8 @@ slew keeps those moments graceful rather than correct.
 
 | property | default | meaning |
 |---|---|---|
-| `mesh` | 1 | the radio: beacons, following, preset sharing. Battery kill switch. |
+| `mesh` | 0 | the radio: beacons, following, preset sharing. Off until you opt your core into a camp. |
+| `meshGroup` | "" | only mesh with cores in the same group. Normalized (trim + ASCII lowercase), FNV-1a hashed into every frame header (`meshGroupHash`); foreign frames are dropped before parsing, and changing group drops all neighbors. The empty string is a group like any other — fencing, not security. Max 36 chars (BLE characteristic size). |
 | `meshShow` | 1 | play the carousel; off = always your own preset (still synced to the grid) |
 | `carouselBeats` | 8 | beats per carousel slot |
 
