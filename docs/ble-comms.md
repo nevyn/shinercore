@@ -35,8 +35,8 @@ range, 2.4GHz contention with the ESP-NOW mesh), stock ArduinoBLE never resets
 2. **ArduinoBLE fork**: `_pendingPkt = 0` on disconnect (`EVT_DISCONN_COMPLETE`
    handler in `src/utility/HCI.cpp`). `~/Dev/Arduino/libraries/ArduinoBLE` is a git
    checkout of github.com/nevyn/ArduinoBLE, branch `shinercore` = upstream tag 1.3.6
-   plus that one commit. On any other build machine, replace the library-manager copy
-   with the same checkout:
+   plus the fork commits below. On any other build machine, replace the
+   library-manager copy with the same checkout:
    `git clone -b shinercore git@github.com:nevyn/ArduinoBLE.git ~/Dev/Arduino/libraries/ArduinoBLE`.
    The fix is correct for upstream too (after a disconnect the controller has flushed
    that link's packets and reports nothing), modulo multi-connection credit
@@ -55,6 +55,18 @@ debounced NVS write. An unpatched core in the same room hung within a minute of
 a mere connect+subscribe+read+abrupt-disconnect from the same script. The storm
 harness is test/blestorm.swift (macOS, CoreBluetooth; usage in its header —
 run it from a real terminal, TCC kills agent shells).
+
+## Empty values are readable (second fork commit)
+
+Stock ArduinoBLE's ATT read handler treats `offset >= valueLength` as Invalid
+Offset (0x07), so a characteristic holding a zero-length value fails every read
+(a plain read is offset 0, and `0 >= 0`). The spec reserves that error for
+offset *greater than* the length. The only property whose encoding can be empty
+is meshGroup (default "" = the everyone-group): on an un-camped core the app's
+read got 0x07, surfaced by CoreBluetooth as "The offset is invalid". Notifies
+were unaffected — zero-length notifies are legal — so the value still arrived,
+just behind an error banner. Fixed in the fork (`>` instead of `>=`, ATT.cpp);
+the app also treats an invalid-offset read as "" for cores flashed before this.
 
 ## Timing contracts the app can rely on
 
