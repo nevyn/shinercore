@@ -6,12 +6,22 @@ It's hard-coded to work well with M5Stack's M5AtomS3 modules, which are very sma
 and cheap and work really great for the use case, but it shouldn't be too much of
 a pain to port it to another ESP32 platform.
 
-The current feature set includes the ability to configure the animations over
-Bluetooth with [an iOS app](https://github.com/nevyn/ShinerCoreRemote). The goal
-is to at beat syncing (having the animations blink to the beat of nearby music
-using a microphone peripheral); and to create a mesh network over bluetooth
-to sync animations with your friends, so you all pulse in time and with each
-others' colors.
+Everything is configured live over Bluetooth from
+[a companion app](https://github.com/nevyn/ShinerCoreRemote)
+([App Store](https://apps.apple.com/app/id6451475618)) — colors, animation, speed,
+brightness, and the layers and blend modes they're composited with — so you tune the
+lights while you're wearing them, without reflashing. A stack of layers is a preset,
+and the button on the device steps through the presets.
+
+Give a core a microphone and it finds the beat of nearby music, running animations in
+beats per cycle instead of seconds per cycle. Cores within earshot of each other share
+a single beat grid over ESP-NOW — whoever hears the music most confidently leads — and
+walk through their presets together, so a whole camp pulses in time. Pulsing in each
+*others'* colors is still to come.
+
+<img src="img/jacket.webp" height="300"> <img src="img/ceiling.webp" height="300"> <img src="img/festival.webp" height="300">
+
+More of what people build with it: [@shiner.core](https://www.instagram.com/shiner.core/).
 
 ## Setup
 
@@ -74,4 +84,5 @@ caps the frame's total draw across both outputs by dimming, protecting the
 battery from brownout on bright frames; set it to what your pack can deliver.
 
 ## Resources
-https://btprodspecificationrefs.blob.core.windows.net/assigned-numbers/Assigned%20Number%20Types/Assigned_Numbers.pdf
+* [What ShinerCore is for](https://nevyn.dev/wiki/portfolio/shinercore/), in prose
+* [Bluetooth assigned numbers](https://btprodspecificationrefs.blob.core.windows.net/assigned-numbers/Assigned%20Number%20Types/Assigned_Numbers.pdf)
