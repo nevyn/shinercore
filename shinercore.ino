@@ -196,6 +196,11 @@ void applyDerivedState(TimeInterval dt)
         shown.animationIndex = target.animationIndex;
         shown.beatSync = target.beatSync;
 
+        // Snapped at the ends, so a closed gate reaches exactly 0 and the layer stops rendering
+        float gate = layerGate[i] ? 1 : 0;
+        float gain = slew(layerAnimations[i].gain, gate, alpha);
+        layerAnimations[i].gain = fabsf(gate - gain) < 0.002f ? gate : gain;
+
         if(shown.beatSync)
         {
             // speed is beats per cycle: phase-lock the animation to the beat

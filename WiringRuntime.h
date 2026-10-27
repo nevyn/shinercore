@@ -32,6 +32,7 @@ struct PinRuntime
     HsvChannelHold hsv;
 };
 PinRuntime pinRuntime[WIRING_MAX_PINS];
+bool layerGate[LAYER_COUNT]; // runtime-only: never stored or sent; opened in wiringSetup
 uint8_t registeredLedPins = 0; // FastLED owns these until the core restarts
 int stripOutputs = 0;
 float ledRestartIn = -1;
@@ -46,6 +47,7 @@ static bool wiringDrivesLeds(int gpio)
 // Registers a strip output for each pin with the LED role. Needs the loaded wiring.
 void wiringSetup()
 {
+    std::fill(layerGate, layerGate + LAYER_COUNT, true);
     if(wiringDrivesLeds(GROVE1_PIN)) { FastLED.addLeds<WS2811, GROVE1_PIN, RGB>(rgbs, MAX_LED_COUNT); stripOutputs++; }
     if(wiringDrivesLeds(GROVE2_PIN)) { FastLED.addLeds<WS2811, GROVE2_PIN, RGB>(rgbs, MAX_LED_COUNT); stripOutputs++; }
     registeredLedPins = localPrefs.wiring.ledPins();
@@ -72,6 +74,7 @@ static void pressButton(const PinRole &role)
     {
         case ButtonToggleLights: toggleMode(); break;
         case ButtonPreset: presetProp.set(role.preset); break;
+        case ButtonToggleLayer: layerGate[role.layer] = !layerGate[role.layer]; break;
         default: break;
     }
 }
@@ -160,6 +163,7 @@ void wiringUpdate(float dt)
     bool holdOff = false, holdOn = false;
     int holdPreset = -1;
     int modeOnOpen = -1;
+    uint16_t switchedLayers = 0, switchedOnLayers = 0; // a switch overrides button toggles of its layer
 
     for(int i = 0; i < board.pinCount; i++)
     {
@@ -203,6 +207,10 @@ void wiringUpdate(float dt)
                     case SwitchLightsOff: if(p.closed) holdOff = true; else if(changed) modeOnOpen = On; break;
                     case SwitchLightsOn: if(p.closed) holdOn = true; else if(changed) modeOnOpen = Off; break;
                     case SwitchPreset: if(p.closed && holdPreset < 0) holdPreset = role.preset; break;
+                    case SwitchLayerOn:
+                        switchedLayers |= 1 << role.layer;
+                        if(p.closed) switchedOnLayers |= 1 << role.layer;
+                        break;
                     default: break;
                 }
             }
@@ -237,6 +245,10 @@ void wiringUpdate(float dt)
     else if(holdOn) mode = On;
     if(mode != localPrefs.mode) modeProp.set(mode);
     if(holdPreset >= 0 && holdPreset != localPrefs.currentPresetIndex) presetProp.set(holdPreset);
+    for(int layer = 0; layer < LAYER_COUNT; layer++)
+    {
+        if(switchedLayers & (1 << layer)) layerGate[layer] = switchedOnLayers & (1 << layer);
+    }
 
     pinStatusProp.offer(encodePinStatus(wiringProp.revision, closedMask, claimedMask, positions, positionCount), dt);
     restartForLedPins(dt);

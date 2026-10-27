@@ -10,6 +10,7 @@ public:
     SubStrip *backbuffer;
     SubStrip *frontbuffer;
     ShinyLayerSettings *prefs;
+    float gain = 1; // the layer gate's fade, 0-1 (docs/wiring.md)
     LayerAnimation(SubStrip *backbuffer, SubStrip *frontbuffer, ShinyLayerSettings *prefs)
       : Animation(1.0, true), backbuffer(backbuffer), frontbuffer(frontbuffer), prefs(prefs)
       {}
