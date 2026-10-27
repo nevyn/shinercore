@@ -23,8 +23,9 @@ static const float kPersistSettleSeconds = 0.5;
 class Property
 {
 public:
-    Property(const char *uuid, const char *key)
-      : chara(uuid, BLERead | BLEWrite | BLENotify, 36),
+    Property(const char *uuid, const char *key,
+             unsigned char properties = BLERead | BLEWrite | BLENotify, int valueSize = 36)
+      : chara(uuid, properties, valueSize),
         key(key),
         nameDescriptor(kDescriptorUserDesc, key),
         formatDescriptor(kDescriptorPresentationFormat, kDescriptorPresentationFormat_String)
