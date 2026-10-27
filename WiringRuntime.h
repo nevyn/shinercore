@@ -7,12 +7,16 @@
 static const float kDebounceSeconds = 0.03;
 static const float kLongPressSeconds = 0.6;    // a nextPreset button held this long toggles the lights
 static const float kLedRestartDelaySeconds = 0.3; // lets the wiring write's response reach the app first
+static const float kKnobFilterSeconds = 0.05;  // low-pass time constant on the ADC reading
+static const float kKnobEndSnap = 0.01;        // the outer 1% of travel at each end reads as that end
+static const float kKnobDeadband = 0.006;      // of travel, from the last written position
+static const float kKnobSettleSeconds = 0.5;   // after boot or a role change: a knob only edits when turned
 
 void cycleToNextPreset();
 void toggleMode();
 
 // What the runtime has configured a pin as, so it reconfigures only on change
-enum PinDrive : uint8_t { DriveNone, DriveUntouched, DrivePullup };
+enum PinDrive : uint8_t { DriveNone, DriveUntouched, DrivePullup, DriveAnalog };
 
 struct PinRuntime
 {
@@ -23,6 +27,9 @@ struct PinRuntime
     float rawFor = 0;
     float heldFor = 0;
     bool longPressFired = false;
+    float filtered = 0, lastWritten = 0, settleLeft = 0; // knob positions are 0-1
+    uint8_t reported = 0;
+    HsvChannelHold hsv;
 };
 PinRuntime pinRuntime[WIRING_MAX_PINS];
 uint8_t registeredLedPins = 0; // FastLED owns these until the core restarts
@@ -69,6 +76,67 @@ static void pressButton(const PinRole &role)
     }
 }
 
+static void writeLayerFloat(LayerProperty<float> &prop, float current, int layer, float value)
+{
+    if(Codec<float>::encode(value) != Codec<float>::encode(current)) prop.setLayer(layer, value);
+}
+
+// Writes the knob's target through its property, only if the stored value would change
+static void writeKnob(PinRuntime &p, const PinRole &role, float position)
+{
+    float value = knobValue(role.target, role.min, role.max, position);
+    ShinyLayerSettings &layer = localPrefs.layers[role.layer];
+    switch(role.target)
+    {
+        case KnobBrightness:
+        {
+            int brightness = lroundf(value);
+            if(brightness != localPrefs.brightness) brightnessProp.set(brightness);
+            return;
+        }
+        case KnobSpeed: writeLayerFloat(speedProp, layer.speed, role.layer, value); return;
+        case KnobTau: writeLayerFloat(tauProp, layer.p_tau, role.layer, value); return;
+        case KnobPhi: writeLayerFloat(phiProp, layer.p_phi, role.layer, value); return;
+        default: break;
+    }
+    bool secondary = role.target >= KnobColor2R;
+    int channel = (role.target - KnobColor1R) % 6; // r g b h s v
+    const CRGB stored = secondary ? layer.secondaryColor : layer.mainColor;
+    uint8_t v = lroundf(value);
+    CRGB next = stored;
+    if(channel < 3) next[channel] = v;
+    else next = p.hsv.write(stored, channel - 3, v);
+    if(next != stored) (secondary ? color2Prop : colorProp).setLayer(role.layer, next);
+}
+
+// The knob's filtered position, 0-1, written to its target when someone turns it
+static float readKnob(PinRuntime &p, const PinRole &role, int gpio, float dt)
+{
+    float raw = analogRead(gpio) / 4095.0f;
+    if(!p.seeded)
+    {
+        p.filtered = raw;
+        p.settleLeft = kKnobSettleSeconds;
+        p.seeded = true;
+    }
+    else p.filtered += (raw - p.filtered) * (1 - expf(-dt / kKnobFilterSeconds));
+    float position = (p.filtered - kKnobEndSnap) / (1 - 2 * kKnobEndSnap);
+    position = position < 0 ? 0 : position > 1 ? 1 : position;
+
+    bool atEnd = position == 0 || position == 1;
+    if(p.settleLeft > 0)
+    {
+        p.settleLeft -= dt;
+        p.lastWritten = position;
+    }
+    else if(fabsf(position - p.lastWritten) > kKnobDeadband || (atEnd && position != p.lastWritten))
+    {
+        p.lastWritten = position;
+        writeKnob(p, role, position);
+    }
+    return position;
+}
+
 static void restartForLedPins(float dt)
 {
     if(localPrefs.wiring.ledPins() == registeredLedPins)
@@ -100,7 +168,7 @@ void wiringUpdate(float dt)
         uint8_t bit = 1 << i;
         bool claimed = (board.claimMask & bit) || ((board.micClaimMask & bit) && localPrefs.micEnabled);
         bool leds = (registeredLedPins & bit) || role.role == RoleLeds;
-        PinDrive drive = (claimed || leds) ? DriveUntouched : DrivePullup;
+        PinDrive drive = (claimed || leds) ? DriveUntouched : role.role == RoleKnob ? DriveAnalog : DrivePullup;
         if(claimed) claimedMask |= bit;
 
         if(drive != p.drive || role != p.role)
@@ -110,6 +178,7 @@ void wiringUpdate(float dt)
             p.role = role;
             p.drive = drive;
             if(drive == DrivePullup) pinMode(board.gpio[i], INPUT_PULLUP);
+            if(drive == DriveAnalog) pinMode(board.gpio[i], ANALOG);
         }
 
         uint8_t position = 0;
@@ -152,6 +221,13 @@ void wiringUpdate(float dt)
                 }
             }
             else if(role.role == RoleButton && changed && p.closed) pressButton(role);
+        }
+        else if(drive == DriveAnalog)
+        {
+            // Hysteresis keeps ADC noise from flipping the reported byte, and notifying, every frame
+            float scaled = readKnob(p, role, board.gpio[i], dt) * 255;
+            if(fabsf(scaled - p.reported) > 0.75f) p.reported = lroundf(scaled);
+            position = p.reported;
         }
         if(board.analogMask & bit) positions[positionCount++] = position;
     }

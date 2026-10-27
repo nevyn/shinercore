@@ -146,7 +146,7 @@ int main() {
     check("brightness 1", near(knobValue(KnobBrightness, 0, 255, 1), 255));
     check("brightness reversed 0", near(knobValue(KnobBrightness, 255, 0, 0), 255));
     check("brightness reversed 1", near(knobValue(KnobBrightness, 255, 0, 1), 0));
-    check("brightness reversed 0.5", near(knobValue(KnobBrightness, 255, 0, 0.5f), 63.75f));
+    check("brightness reversed 0.5", near(knobValue(KnobBrightness, 255, 0, 0.5f), 191.25f));
     check("speed log 0", near(knobValue(KnobSpeed, 0.1f, 10, 0), 0.1f));
     check("speed log 0.5 is the geometric mean", near(knobValue(KnobSpeed, 0.1f, 10, 0.5f), 1));
     check("speed log 1", near(knobValue(KnobSpeed, 0.1f, 10, 1), 10));

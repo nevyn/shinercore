@@ -175,6 +175,23 @@ int main() {
         expect("nvs cleared", nvs("brightness"), "<absent>");
     }
 
+    printf("setLayer writes any layer of the current preset\n");
+    {
+        localPrefs = ShinySettings();
+        prefs = Prefs();
+        Fixture f;
+        localPrefs.currentLayerIndex = 1;
+        localPrefs.currentPresetIndex = 2;
+        f.tau.setLayer(4, 50.0f);
+        expectInt("field set", (long)localPrefs.layers[4].p_tau, 50);
+        expectInt("off-cursor layer not republished", f.tau.flushPublish() ? 1 : 0, 0);
+        f.tau.setLayer(1, 500.0f);
+        expect("cursor layer republished, clamped", f.tau.flushPublish() ? f.tau._publishValue.c_str() : "", "100.000");
+        f.tau.update(1.0f);
+        expect("first key flushed on key change", nvs("tau-4-2"), "50.000");
+        expect("second key settles", nvs("tau-1-2"), "100.000");
+    }
+
     printf("wiring is stored synchronously and every write bumps the revision\n");
     {
         localPrefs = ShinySettings();

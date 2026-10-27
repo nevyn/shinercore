@@ -275,6 +275,15 @@ public:
     {
         publish(C::encode(current()));
     }
+    // Sets one layer of the current preset, whichever layer the cursor
+    // addresses, and republishes only if the cursor addresses that layer.
+    void setLayer(int layer, const T &value)
+    {
+        T &field = localPrefs.layers[layer].*member;
+        field = constrained(value);
+        persist(layerKey(key, layer, localPrefs.currentPresetIndex), C::encode(field), C::encode(defaultValue));
+        if(layer == localPrefs.currentLayerIndex) republish();
+    }
 protected:
     T &current() { return localPrefs.layers[localPrefs.currentLayerIndex].*member; }
     virtual void handleWrite(const String &wire)
@@ -289,10 +298,7 @@ protected:
             republish(); // rejected; re-echo the actual value
             return;
         }
-        current() = constrained(v);
-        persist(layerKey(key, localPrefs.currentLayerIndex, localPrefs.currentPresetIndex),
-                C::encode(current()), C::encode(defaultValue));
-        republish();
+        setLayer(localPrefs.currentLayerIndex, v);
     }
     T constrained(const T &v) { return hasRange ? clampTo(v, lo, hi) : v; }
 

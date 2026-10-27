@@ -314,9 +314,8 @@ String wiringDocsJSON(const BoardSpec &board)
 
 float knobValue(KnobTarget target, float min, float max, float position)
 {
-    if(min > max) return knobValue(target, max, min, 1 - position);
     if(target == KnobBrightness) return min + (max - min) * position * position;
-    bool logarithmic = (target == KnobSpeed || target == KnobTau || target == KnobPhi) && min > 0;
+    bool logarithmic = (target == KnobSpeed || target == KnobTau || target == KnobPhi) && min > 0 && max > 0;
     if(logarithmic) return min * powf(max / min, position);
     return min + (max - min) * position;
 }
