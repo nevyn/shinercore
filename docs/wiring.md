@@ -106,8 +106,11 @@ rr cc mm pp pp ...
   pin reads LOW (connected to G). Zero for knob and LED pins.
 * `mm`: claimed bitmask, same bit order.
 * `pp`: one byte per analog-capable pin, in status bit order: the filtered knob position
-  0-255. Present for every analog-capable pin whatever its role; on a pin without a
-  knob it reads the pull-up, near ff.
+  0-255. Present for every analog-capable pin whatever its role. A pin without a knob
+  reports its digital state: ff open (the pull-up), 00 closed; LED and claimed pins
+  report 00. The firmware never samples those pins with the ADC: on the ESP32 core,
+  `analogRead` switches the pad to analog mode, which disables the pull-up
+  (`__adcAttachPin` in esp32-hal-adc.c, core 2.1.1).
 
 Example, Atom Echo, G21 pressed, knob on G32 at 62%: `07` `01` `3c` `9e` =
 `07013c9e`. The firmware publishes on change only, at most every 100 ms, through the
@@ -155,15 +158,22 @@ overrides any button toggle of the same layer.
 persists, notifies, and reaches the mesh like any edit. Layer targets address layer
 *N* of the current preset, independent of the BLE layer cursor.
 
-* The reading is low-pass filtered, with the ends snapped so 0 and 255 are reachable.
-* A knob writes only when its filtered position moves past a deadband from the last
-  position it wrote, and never during the first 0.5 s after boot: a knob only edits
+* The reading is low-pass filtered (50 ms), with the outer 1% of travel at each end
+  snapped to that end so 0 and 255 are reachable; the travel between is stretched to
+  fit, so the snap doesn't jump.
+* A knob writes only when its filtered position moves past a deadband (0.6% of travel)
+  from the last position it wrote, or reaches an end, and never during the first 0.5 s
+  after its role starts (boot, a wiring change, a claim ending): a knob only edits
   when someone turns it.
+* Two knobs turned at once that address the same setting on different layers each
+  flush the other's pending NVS write, so they persist every frame instead of once.
 * HSV channels hold the HSV value they last wrote and only re-derive it from the stored
   color if something else changed that color, so the other two channels don't drift.
 
 **LED pins** are registered with FastLED at boot. A write that changes which pins have
-the LED role persists immediately and restarts the core.
+the LED role restarts the core 0.3 s later, after flushing every pending persist. Until
+then, the pins registered at boot stay FastLED's and a new LED pin stays untouched. The
+power cap (`maxCurrent`) splits evenly across the registered outputs.
 
 **Claimed pins** are never configured or read by the wiring runtime. When a claim ends
 (mic turned off), the pin's role resumes from rest, without firing edges.

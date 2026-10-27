@@ -68,6 +68,14 @@ were unaffected — zero-length notifies are legal — so the value still arrive
 just behind an error banner. Fixed in the fork (`>` instead of `>=`, ATT.cpp);
 the app also treats an invalid-offset read as "" for cores flashed before this.
 
+## Notifications carry at most 20 bytes
+
+ArduinoBLE never raises the ATT MTU above the default 23, so a notification holds at
+most 20 bytes of value; longer values are truncated. Reads and writes can be longer
+(Read Blob and Prepared Write both work in ArduinoBLE). A value that may exceed 20
+bytes therefore gets no notify, and a short notifying characteristic tells the app when
+to re-read it: `wiring` and `pinStatus` in [wiring.md](wiring.md).
+
 ## Timing contracts the app can rely on
 
 * A write is *applied* (visible in the LEDs) the same frame it's polled; only the

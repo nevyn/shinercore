@@ -22,7 +22,8 @@ the cache — recompile the variant you're flashing right before `arduino-cli up
 
 ## Host tests
 
-`test/run.sh` compiles and runs the host-side tests (codecs, migration) with clang.
+`test/run.sh` compiles and runs the host-side tests (codecs, migration, properties,
+wiring) with clang, against the ArduinoJson in `~/Dev/Arduino/libraries`.
 They stub the Arduino surface via `test/stubs/FastLED.h`; pure logic only, no BLE or
 LED code. Keep them passing; extend them when you touch what they cover.
 
