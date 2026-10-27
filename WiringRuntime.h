@@ -32,6 +32,7 @@ struct PinRuntime
     HsvChannelHold hsv;
 };
 PinRuntime pinRuntime[WIRING_MAX_PINS];
+PinRuntime frontButtonRuntime;
 bool layerGate[LAYER_COUNT]; // runtime-only: never stored or sent; opened in wiringSetup
 uint8_t registeredLedPins = 0; // FastLED owns these until the core restarts
 int stripOutputs = 0;
@@ -56,6 +57,13 @@ void wiringSetup()
 // True when the debounced state changed this frame
 static bool debounce(PinRuntime &p, bool raw, float dt)
 {
+    if(!p.seeded)
+    {
+        // No edge on the first reading: a button that's already held does nothing until pressed again
+        p.raw = p.closed = p.longPressFired = raw;
+        p.seeded = true;
+        return false;
+    }
     if(raw != p.raw)
     {
         p.raw = raw;
@@ -76,6 +84,27 @@ static void pressButton(const PinRole &role)
         case ButtonPreset: presetProp.set(role.preset); break;
         case ButtonToggleLayer: layerGate[role.layer] = !layerGate[role.layer]; break;
         default: break;
+    }
+}
+
+// Acts on a debounced button: nextPreset on release or hold, everything else on press
+static void runButton(PinRuntime &p, const PinRole &role, bool changed, float dt)
+{
+    if(role.action != ButtonNextPreset)
+    {
+        if(changed && p.closed) pressButton(role);
+        return;
+    }
+    if(changed && p.closed)
+    {
+        p.heldFor = 0;
+        p.longPressFired = false;
+    }
+    else if(changed && !p.longPressFired) cycleToNextPreset();
+    if(p.closed && !p.longPressFired && (p.heldFor += dt) >= kLongPressSeconds)
+    {
+        p.longPressFired = true;
+        toggleMode();
     }
 }
 
@@ -165,6 +194,14 @@ void wiringUpdate(float dt)
     int modeOnOpen = -1;
     uint16_t switchedLayers = 0, switchedOnLayers = 0; // a switch overrides button toggles of its layer
 
+    PinRuntime &front = frontButtonRuntime;
+    if(front.role != localPrefs.wiring.frontButton)
+    {
+        front = PinRuntime();
+        front.role = localPrefs.wiring.frontButton;
+    }
+    runButton(front, front.role, debounce(front, M5.BtnA.isPressed(), dt), dt);
+
     for(int i = 0; i < board.pinCount; i++)
     {
         const PinRole &role = localPrefs.wiring.pins[i];
@@ -188,15 +225,7 @@ void wiringUpdate(float dt)
         uint8_t position = 0;
         if(drive == DrivePullup)
         {
-            bool raw = digitalRead(board.gpio[i]) == LOW;
-            bool changed = false;
-            if(!p.seeded)
-            {
-                // No edge on the first reading: a button that's already held does nothing until pressed again
-                p.raw = p.closed = p.longPressFired = raw;
-                p.seeded = true;
-            }
-            else changed = debounce(p, raw, dt);
+            bool changed = debounce(p, digitalRead(board.gpio[i]) == LOW, dt);
             if(p.closed) closedMask |= bit;
             position = p.closed ? 0x00 : 0xff;
 
@@ -214,21 +243,7 @@ void wiringUpdate(float dt)
                     default: break;
                 }
             }
-            else if(role.role == RoleButton && role.action == ButtonNextPreset)
-            {
-                if(changed && p.closed)
-                {
-                    p.heldFor = 0;
-                    p.longPressFired = false;
-                }
-                else if(changed && !p.longPressFired) cycleToNextPreset();
-                if(p.closed && !p.longPressFired && (p.heldFor += dt) >= kLongPressSeconds)
-                {
-                    p.longPressFired = true;
-                    toggleMode();
-                }
-            }
-            else if(role.role == RoleButton && changed && p.closed) pressButton(role);
+            else if(role.role == RoleButton) runButton(p, role, changed, dt);
         }
         else if(drive == DriveAnalog)
         {

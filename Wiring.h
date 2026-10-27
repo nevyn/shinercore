@@ -40,15 +40,24 @@ struct PinRole
     bool operator!=(const PinRole &o) const { return !(*this == o); }
 };
 
-// A role per board pin, indexed in the board's status bit order.
+inline PinRole nextPresetButton()
+{
+    PinRole r;
+    r.role = RoleButton;
+    r.action = ButtonNextPreset;
+    return r;
+}
+
+// A role per board pin, indexed in the board's status bit order, plus the front button.
 struct Wiring
 {
     PinRole pins[WIRING_MAX_PINS];
+    PinRole frontButton = nextPresetButton(); // always the button role
 
     bool operator==(const Wiring &o) const
     {
         for(int i = 0; i < WIRING_MAX_PINS; i++) if(pins[i] != o.pins[i]) return false;
-        return true;
+        return frontButton == o.frontButton;
     }
     bool operator!=(const Wiring &o) const { return !(*this == o); }
     // Bit i set when pin i has the LED role.
@@ -67,6 +76,7 @@ struct BoardSpec
     uint8_t pinCount;
     const char *labels[WIRING_MAX_PINS]; // as printed on the case, in status bit order
     uint8_t gpio[WIRING_MAX_PINS];
+    const char *frontButtonLabel; // the button on the case's face; not in the status bit order
     uint8_t analogMask;   // ADC1 pins; ADC2 stops working while wifi (the mesh) is up
     uint8_t ledMask;      // pins that FastLED can drive (it binds them at compile time)
     uint8_t claimMask;    // claimed by built-in hardware, always
@@ -113,8 +123,8 @@ Wiring defaultWiring(const BoardSpec &board);
 // Validation). On rejection, returns false, leaves out unchanged and names the
 // failing pin and rule in error.
 bool decodeWiring(const BoardSpec &board, const String &json, Wiring &out, String &error);
-// The canonical form: pins in status bit order, keys in contract order,
-// numbers in their shortest round-tripping form.
+// The canonical form: pins in status bit order, then the front button, keys in
+// contract order, numbers in their shortest round-tripping form.
 String encodeWiring(const BoardSpec &board, const Wiring &wiring);
 // The wiringDocs characteristic's static JSON: pins, capabilities, claims, targets.
 String wiringDocsJSON(const BoardSpec &board);

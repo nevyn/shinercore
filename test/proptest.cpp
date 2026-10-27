@@ -197,7 +197,7 @@ int main() {
         localPrefs = ShinySettings();
         prefs = Prefs();
         WiringProperty wiring("u3", "wiring", &localPrefs.wiring);
-        const std::string custom = "{\"G21\":{\"button\":\"toggleLights\"}}";
+        const std::string custom = "{\"G21\":{\"button\":\"toggleLights\"},\"G39\":{\"button\":\"nextPreset\"}}";
         wiring.load();
         expectInt("load bumps", wiring.revision, 1);
         expect("default stored at load", wiring.chara.stored, encodeWiring(kAtomLite, defaultWiring(kAtomLite)).c_str());

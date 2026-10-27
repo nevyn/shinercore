@@ -45,15 +45,15 @@ int main() {
              "{\"G21\":{\"button\":\"nextPreset\"},\"G25\":{\"switch\":\"lightsOff\"},"
              "\"G22\":{\"switch\":\"preset\",\"preset\":0},\"G19\":{\"switch\":\"preset\",\"preset\":1},"
              "\"G23\":{\"switch\":\"preset\",\"preset\":2},\"G33\":{\"switch\":\"preset\",\"preset\":3},"
-             "\"G26\":{\"leds\":true},\"G32\":{\"leds\":true}}"},
+             "\"G26\":{\"leds\":true},\"G32\":{\"leds\":true},\"G39\":{\"button\":\"nextPreset\"}}"},
             {&kAtomEcho,
              "{\"G21\":{\"button\":\"nextPreset\"},\"G25\":{\"switch\":\"lightsOff\"},"
-             "\"G26\":{\"leds\":true},\"G32\":{\"leds\":true}}"},
+             "\"G26\":{\"leds\":true},\"G32\":{\"leds\":true},\"G39\":{\"button\":\"nextPreset\"}}"},
             {&kAtomS3Lite,
              "{\"G39\":{\"button\":\"nextPreset\"},\"G38\":{\"switch\":\"lightsOff\"},"
              "\"G5\":{\"switch\":\"preset\",\"preset\":0},\"G6\":{\"switch\":\"preset\",\"preset\":1},"
              "\"G7\":{\"switch\":\"preset\",\"preset\":2},\"G8\":{\"switch\":\"preset\",\"preset\":3},"
-             "\"G2\":{\"leds\":true},\"G1\":{\"leds\":true}}"},
+             "\"G2\":{\"leds\":true},\"G1\":{\"leds\":true},\"G41\":{\"button\":\"nextPreset\"}}"},
         };
         for(auto &c: cases) {
             Wiring w = defaultWiring(*c.board), back;
@@ -62,7 +62,7 @@ int main() {
             expect(c.board->id, encoded, c.canonical);
             check("  decode(encode(default)) == default", decodeWiring(*c.board, encoded, back, error) && back == w);
         }
-        check("stickc has no wiring pins", encodeWiring(kStickC, defaultWiring(kStickC)) == "{}");
+        expect("stickc has only the front button", encodeWiring(kStickC, defaultWiring(kStickC)), "{\"G37\":{\"button\":\"nextPreset\"}}");
     }
 
     printf("the contract example\n");
@@ -75,7 +75,8 @@ int main() {
                "{\"G21\":{\"button\":\"nextPreset\"},\"G25\":{\"switch\":\"lightsOff\"},"
                "\"G22\":{\"switch\":\"preset\",\"preset\":0},\"G23\":{\"switch\":\"layerOn\",\"layer\":3},"
                "\"G33\":{\"knob\":\"color1.h\",\"layer\":2,\"min\":0,\"max\":255},"
-               "\"G26\":{\"leds\":true},\"G32\":{\"knob\":\"brightness\",\"min\":0,\"max\":255}}");
+               "\"G26\":{\"leds\":true},\"G32\":{\"knob\":\"brightness\",\"min\":0,\"max\":255},"
+               "\"G39\":{\"button\":\"nextPreset\"}}");
         check("round-trips", decodeWiring(kAtomLite, encoded, back, error) && back == w);
         check("G33 knob decoded", w.pins[5].role == RoleKnob && w.pins[5].target == KnobColor1H &&
                                   w.pins[5].layer == 2 && w.pins[5].max == 255);
@@ -89,16 +90,45 @@ int main() {
         Wiring w;
         String error;
         check("empty object is all nothing", decodeWiring(kAtomLite, "{}", w, error) && w == Wiring());
+        check("  but the front button", w.frontButton.role == RoleButton && w.frontButton.action == ButtonNextPreset);
         check("conditional claim may hold a role",
               decodeWiring(kAtomLite, "{\"G23\":{\"button\":\"toggleLights\"}}", w, error) && w.pins[4].role == RoleButton);
         check("key order inside a role is free",
               decodeWiring(kAtomS3Lite, "{\"G5\":{\"max\":0.5,\"min\":20,\"layer\":9,\"knob\":\"speed\"}}", w, error));
         expect("reversed float range, shortest numbers", encodeWiring(kAtomS3Lite, w),
-               "{\"G5\":{\"knob\":\"speed\",\"layer\":9,\"min\":20,\"max\":0.5}}");
+               "{\"G5\":{\"knob\":\"speed\",\"layer\":9,\"min\":20,\"max\":0.5},\"G41\":{\"button\":\"nextPreset\"}}");
         check("negative tau range", decodeWiring(kAtomS3Lite, "{\"G1\":{\"knob\":\"tau\",\"layer\":0,\"min\":-100,\"max\":0.001}}", w, error));
-        expect("  encodes", encodeWiring(kAtomS3Lite, w), "{\"G1\":{\"knob\":\"tau\",\"layer\":0,\"min\":-100,\"max\":0.001}}");
+        expect("  encodes", encodeWiring(kAtomS3Lite, w),
+               "{\"G1\":{\"knob\":\"tau\",\"layer\":0,\"min\":-100,\"max\":0.001},\"G41\":{\"button\":\"nextPreset\"}}");
         Wiring back;
         check("  round-trips exactly", decodeWiring(kAtomS3Lite, encodeWiring(kAtomS3Lite, w), back, error) && back == w);
+    }
+
+    printf("the front button\n");
+    {
+        struct { const char *json; const char *canonical; } actions[] = {
+            {"{\"G39\":{\"button\":\"nextPreset\"}}", "{\"G39\":{\"button\":\"nextPreset\"}}"},
+            {"{\"G39\":{\"button\":\"toggleLights\"}}", "{\"G39\":{\"button\":\"toggleLights\"}}"},
+            {"{\"G39\":{\"preset\":4,\"button\":\"preset\"}}", "{\"G39\":{\"button\":\"preset\",\"preset\":4}}"},
+            {"{\"G39\":{\"button\":\"toggleLayer\",\"layer\":9}}", "{\"G39\":{\"button\":\"toggleLayer\",\"layer\":9}}"},
+        };
+        for(auto &a: actions) {
+            Wiring w, back;
+            String error;
+            check(a.json, decodeWiring(kAtomEcho, a.json, w, error));
+            expect("  canonical", encodeWiring(kAtomEcho, w), a.canonical);
+            check("  round-trips", decodeWiring(kAtomEcho, encodeWiring(kAtomEcho, w), back, error) && back == w);
+        }
+        Wiring w;
+        String error;
+        check("on atoms3-lite it is G41, and G39 is a wired pin",
+              decodeWiring(kAtomS3Lite, "{\"G39\":{\"switch\":\"lightsOn\"},\"G41\":{\"button\":\"toggleLights\"}}", w, error) &&
+              w.pins[0].role == RoleSwitch && w.frontButton.action == ButtonToggleLights);
+        rejects(kAtomLite, "front button as a switch", "{\"G39\":{\"switch\":\"lightsOff\"}}");
+        rejects(kAtomLite, "front button as a knob", "{\"G39\":{\"knob\":\"brightness\",\"min\":0,\"max\":255}}");
+        rejects(kAtomLite, "front button as LEDs", "{\"G39\":{\"leds\":true}}");
+        rejects(kAtomLite, "front button with an unknown action", "{\"G39\":{\"button\":\"explode\"}}");
+        rejects(kAtomS3Lite, "atoms3-lite front button as a knob", "{\"G41\":{\"knob\":\"brightness\",\"min\":0,\"max\":255}}");
     }
 
     printf("rejections, one per validation rule\n");
@@ -131,6 +161,7 @@ int main() {
     expect("atom-echo matches docs/wiring.md", wiringDocsJSON(kAtomEcho),
            "{\"board\":\"atom-echo\","
            "\"pins\":[\"G21\",\"G25\",\"G22\",\"G19\",\"G23\",\"G33\",\"G26\",\"G32\"],"
+           "\"frontButton\":\"G39\","
            "\"analog\":[\"G32\"],"
            "\"led\":[\"G26\",\"G32\"],"
            "\"claims\":{\"G19\":\"speaker\",\"G22\":\"speaker\",\"G23\":\"microphone\",\"G33\":\"microphone\"},"

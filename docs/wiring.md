@@ -17,8 +17,15 @@ can be LEDs.
 | `atom-echo` | G21 G25 G22 G19 G23 G33 G26 G32 | G32 | G26 G32 | G19, G22: `speaker`; G23, G33: `microphone` (always) |
 | `atoms3-lite` | G39 G38 G5 G6 G7 G8 G2 G1 | G5 G6 G7 G8 G2 G1 | G2 G1 | none |
 
-Grove cable colors: black G, red 5V, yellow G26 (S3: G2), white G32 (S3: G1). The
-built-in button is not a wiring pin; it keeps its fixed behavior.
+Grove cable colors: black G, red 5V, yellow G26 (S3: G2), white G32 (S3: G1).
+
+### The front button
+
+The button on the face of the case is wired in too, under its printed label: G39 on
+`atom-lite` and `atom-echo`, G41 on `atoms3-lite`. Its only role is button. It is not
+in the status bit order, so `pinStatus` doesn't report it. When its key is absent from
+the wiring, it acts as `nextPreset`, so wiring stored before it was configurable keeps
+the old behavior. Holding it during boot still clears all settings, whatever its role.
 
 ### Defaults
 
@@ -30,6 +37,7 @@ pre-wiring firmware exactly:
 * `atom-echo`: G26, G32 LEDs; G21 button `nextPreset`; G25 switch `lightsOff`.
 * `atoms3-lite`: G2, G1 LEDs; G39 button `nextPreset`; G38 switch `lightsOff`;
   G5, G6, G7, G8 switch `preset` 0, 1, 2, 3.
+* Every board: the front button `nextPreset`.
 
 ## Wire format: the `wiring` value
 
@@ -71,11 +79,12 @@ A write is rejected whole, and the stored wiring left unchanged, if any of these
 it doesn't parse; a key isn't a pin of this board; a pin has a permanent claim; a role
 isn't allowed on that pin (knob needs analog, LEDs needs LED-capable); an action or
 target is unknown; a required extra key is missing or out of range; an unexpected key
-is present; `min` or `max` is outside the target's range. A pin with a conditional claim
+is present; `min` or `max` is outside the target's range; the front button has a role
+other than button. A pin with a conditional claim
 (the Atom Lite's mic pins) may hold a role; the role is inactive while claimed.
 
-The firmware re-encodes accepted wiring canonically: pins in status bit order, keys in
-the order shown above, numbers in their shortest form. Clients compare wiring by
+The firmware re-encodes accepted wiring canonically: pins in status bit order, then the
+front button, always present; keys in the order shown above; numbers in their shortest form. Clients compare wiring by
 meaning, not bytes. An empty write resets to the board default.
 
 ## BLE characteristics
@@ -121,6 +130,7 @@ shared notify flush limiter.
 ```json
 {"board":"atom-echo",
  "pins":["G21","G25","G22","G19","G23","G33","G26","G32"],
+ "frontButton":"G39",
  "analog":["G32"],
  "led":["G26","G32"],
  "claims":{"G19":"speaker","G22":"speaker","G23":"microphone","G33":"microphone"},
@@ -130,7 +140,8 @@ shared notify flush limiter.
 ```
 
 `claims` names every pin that can be claimed and by what; `pinStatus` says whether the
-claim is active right now.
+claim is active right now. `frontButton` is absent from firmware that predates a
+configurable front button.
 
 ## Runtime semantics
 
@@ -146,7 +157,7 @@ once:
 * `layerOn`: the layer's gate follows the switch, open meaning off.
 
 **Buttons act on press:** `nextPreset` cycles on release and toggles lights after a
-600 ms hold, as the built-in button does; `toggleLights`, `preset` and `toggleLayer` act
+600 ms hold; `toggleLights`, `preset` and `toggleLayer` act
 on press.
 
 **Layer gates** are runtime-only, start open at boot, and are not stored or sent over
