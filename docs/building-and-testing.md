@@ -5,6 +5,21 @@
 All builds need `--libraries ~/Dev/Arduino/libraries` if the default sketchbook isn't
 configured (OverAnimate lives there, unpublished).
 
+Two libraries carry fixes that the firmware needs:
+
+* ArduinoBLE: the github.com/nevyn/ArduinoBLE fork, branch `shinercore`
+  ([ble-comms.md](ble-comms.md)).
+* FastLED: the github.com/nevyn/FastLED fork, branch `shinercore` = upstream tag
+  3.6.0 plus the RMT start-race fix ([wiring.md](wiring.md), LED pins). A patched
+  build's map file contains `gStartMux`.
+
+On a new build machine, replace the library-manager copies:
+
+```
+git clone -b shinercore git@github.com:nevyn/ArduinoBLE.git ~/Dev/Arduino/libraries/ArduinoBLE
+git clone -b shinercore git@github.com:nevyn/FastLED.git ~/Dev/Arduino/libraries/FastLED
+```
+
 ```
 # M5AtomS3
 arduino-cli compile -b m5stack:esp32:m5stack_atoms3
