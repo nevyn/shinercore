@@ -10,6 +10,7 @@ const BoardSpec kAtomLite = {
     "atom-lite", 8,
     {"G21", "G25", "G22", "G19", "G23", "G33", "G26", "G32"},
     {21, 25, 22, 19, 23, 33, 26, 32},
+    "G39", 39,
     0xA0, 0xC0, 0x00, 0x30,
     {nullptr, nullptr, nullptr, nullptr, "microphone", "microphone", nullptr, nullptr},
 };
@@ -17,6 +18,7 @@ const BoardSpec kAtomEcho = {
     "atom-echo", 8,
     {"G21", "G25", "G22", "G19", "G23", "G33", "G26", "G32"},
     {21, 25, 22, 19, 23, 33, 26, 32},
+    "G39", 39,
     0x80, 0xC0, 0x3C, 0x00,
     {nullptr, nullptr, "speaker", "speaker", "microphone", "microphone", nullptr, nullptr},
 };
@@ -24,11 +26,12 @@ const BoardSpec kAtomS3Lite = {
     "atoms3-lite", 8,
     {"G39", "G38", "G5", "G6", "G7", "G8", "G2", "G1"},
     {39, 38, 5, 6, 7, 8, 2, 1},
+    "G41", 41,
     0xFC, 0xC0, 0x00, 0x00,
     {},
 };
 // No wiring pins: its two LED outputs stay fixed.
-const BoardSpec kStickC = {"m5stickc", 0, {}, {}, 0, 0, 0, 0, {}};
+const BoardSpec kStickC = {"m5stickc", 0, {}, {}, "G37", 37, 0, 0, 0, 0, {}};
 
 int BoardSpec::indexOf(const char *label) const
 {
@@ -112,9 +115,10 @@ static bool readNumber(JsonObjectConst obj, const char *pin, const char *key, fl
     return true;
 }
 
-static bool decodePinRole(const BoardSpec &board, int i, JsonVariantConst value, PinRole &r, String &error)
+// i is the pin's status bit index, or -1 for the front button.
+static bool decodePinRole(const BoardSpec &board, int i, const char *pin, JsonVariantConst value, PinRole &r, String &error)
 {
-    const char *pin = board.labels[i];
+    uint8_t bit = i < 0 ? 0 : 1 << i;
     if(!value.is<JsonObjectConst>()) return fail(error, pin, "role must be an object");
     JsonObjectConst obj = value.as<JsonObjectConst>();
 
@@ -124,13 +128,14 @@ static bool decodePinRole(const BoardSpec &board, int i, JsonVariantConst value,
         if(!obj[kRoleKeys[role]].isNull()) { r.role = (WiringRole)role; roleKeys++; }
     }
     if(roleKeys != 1) return fail(error, pin, "needs exactly one of \"switch\", \"button\", \"knob\", \"leds\"");
+    if(i < 0 && r.role != RoleButton) return fail(error, pin, "the front button can only be a button");
 
     bool wantsPreset = false, wantsLayer = false, wantsRange = false;
     const char *name = obj[kRoleKeys[r.role]].is<const char *>() ? obj[kRoleKeys[r.role]].as<const char *>() : nullptr;
     switch(r.role)
     {
         case RoleLeds:
-            if(!(board.ledMask & (1 << i))) return fail(error, pin, "can't drive LEDs");
+            if(!(board.ledMask & bit)) return fail(error, pin, "can't drive LEDs");
             if(!obj["leds"].is<bool>() || !obj["leds"].as<bool>()) return fail(error, pin, "\"leds\" must be true");
             break;
         case RoleSwitch:
@@ -153,7 +158,7 @@ static bool decodePinRole(const BoardSpec &board, int i, JsonVariantConst value,
         }
         case RoleKnob:
         {
-            if(!(board.analogMask & (1 << i))) return fail(error, pin, "can't be a knob: not an analog pin");
+            if(!(board.analogMask & bit)) return fail(error, pin, "can't be a knob: not an analog pin");
             int t = lookup(kKnobTargetNames, KnobTargetCount, name);
             if(t < 0) return fail(error, pin, "unknown knob target");
             r.target = (KnobTarget)t;
@@ -196,10 +201,16 @@ bool decodeWiring(const BoardSpec &board, const String &json, Wiring &out, Strin
     for(JsonPairConst kv: doc.as<JsonObjectConst>())
     {
         const char *pin = kv.key().c_str();
+        if(strcmp(pin, board.frontButtonLabel) == 0)
+        {
+            w.frontButton = PinRole();
+            if(!decodePinRole(board, -1, pin, kv.value(), w.frontButton, error)) return false;
+            continue;
+        }
         int i = board.indexOf(pin);
         if(i < 0) return fail(error, pin, String("not a pin of ") + board.id);
         if(board.claimMask & (1 << i)) return fail(error, pin, String("claimed by the ") + board.claims[i]);
-        if(!decodePinRole(board, i, kv.value(), w.pins[i], error)) return false;
+        if(!decodePinRole(board, i, pin, kv.value(), w.pins[i], error)) return false;
     }
     String canonical = encodeWiring(board, w);
     if(canonical.length() > WIRING_MAX_BYTES)
@@ -267,7 +278,8 @@ String encodeWiring(const BoardSpec &board, const Wiring &wiring)
         first = false;
         json += quoted(board.labels[i]) + ":" + encodePinRole(wiring.pins[i]);
     }
-    return json + "}";
+    if(!first) json += ",";
+    return json + quoted(board.frontButtonLabel) + ":" + encodePinRole(wiring.frontButton) + "}";
 }
 
 static String labelList(const BoardSpec &board, uint8_t mask)
@@ -288,6 +300,7 @@ String wiringDocsJSON(const BoardSpec &board)
 {
     String json = "{\"board\":" + quoted(board.id);
     json += ",\"pins\":" + labelList(board, 0xFF);
+    json += ",\"frontButton\":" + quoted(board.frontButtonLabel);
     json += ",\"analog\":" + labelList(board, board.analogMask);
     json += ",\"led\":" + labelList(board, board.ledMask);
     // claims in GPIO order, as docs/wiring.md lists them

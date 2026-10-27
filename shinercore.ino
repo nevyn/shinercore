@@ -251,25 +251,8 @@ void toggleMode()
     modeProp.set(localPrefs.mode == Off ? On : Off);
 }
 
-bool builtinLongPressHandled = false;
-
 void update(TimeInterval dt)
 {
-    // Built-in button: short press = cycle preset, long press = on/off
-    if(M5.BtnA.wasPressed())
-    {
-        builtinLongPressHandled = false;
-    }
-    if(!builtinLongPressHandled && M5.BtnA.pressedFor(600))
-    {
-        builtinLongPressHandled = true;
-        toggleMode();
-    }
-    if(M5.BtnA.wasReleased() && !builtinLongPressHandled)
-    {
-        cycleToNextPreset();
-    }
-
     wiringUpdate(dt);
 }
 
