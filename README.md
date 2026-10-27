@@ -81,8 +81,11 @@ BTF-Lighting (Amazon), or AliExpress for bulk reels. DigiKey has limited strip s
 
 **Power note:** At 5V, long runs need power injection every ~3m at 60 LEDs/m
 to avoid voltage drop and color shift. The `maxCurrent` setting (mA, 0 = off)
-caps the frame's total draw across both outputs by dimming, protecting the
-battery from brownout on bright frames; set it to what your pack can deliver.
+dims bright frames to fit a current budget, protecting the battery from
+brownout. The draw is estimated, not measured: nominal WS2812 currents for one
+copy of the frame on each LED output in the wiring. Wiring that replays the
+data more times than that — strips in parallel on one line, a Y-fork — draws a
+multiple of the estimate, so divide your pack's rating by the copy count.
 
 ## Resources
 * [What ShinerCore is for](https://nevyn.dev/wiki/portfolio/shinercore/), in prose

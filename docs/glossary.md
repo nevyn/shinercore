@@ -19,4 +19,6 @@ One term per concept. Use these in code, docs, the app and commits.
   control; fades the layer rather than cutting it.
 * **preset**: one of the five stored sets of layer settings.
 * **layer**: one of the ten composited animations in a preset.
+* **power cap**: the `maxCurrent` setting: an estimated current budget that bright
+  frames are dimmed to fit. An estimate from frame data, never a measurement.
 * **mesh**: the ESP-NOW sync between nearby cores. See [mesh-sync.md](mesh-sync.md).
