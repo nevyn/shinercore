@@ -82,14 +82,13 @@ void setup(void) {
 
     M5.update();
 
-    // The builtin pixel is GRB hardware on every variant, and unlike the strip
-    // buffer it never passes through applyLedColorOrder
-    FastLED.addLeds<WS2811, NEO_PIN, GRB>(btnled, 1);
-    ledstrip.fill(CRGB::Black);
-    FastLED.show();
-
     commsSetup();
     wiringSetup(); // after commsSetup has loaded the wiring
+
+    // The builtin pixel is GRB hardware on every variant, and unlike the strip
+    // buffer it never passes through applyLedColorOrder.
+    // Registered after the strips, or FastLED.show() can hang (docs/wiring.md, LED pins).
+    FastLED.addLeds<WS2811, NEO_PIN, GRB>(btnled, 1);
 
     if(M5.getDisplayCount() > 0)
     {

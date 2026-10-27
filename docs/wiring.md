@@ -186,6 +186,24 @@ the LED role restarts the core 0.3 s later, after flushing every pending persist
 then, the pins registered at boot stay FastLED's and a new LED pin stays untouched. The
 power cap (`maxCurrent`) splits evenly across the registered outputs.
 
+The strips must be registered before the builtin pixel. FastLED 3.6's ESP32 RMT driver
+(`clockless_rmt_esp32.cpp`) starts one RMT channel per output in registration order and
+counts the started outputs in `gNext`, which it increments only after a channel has
+started. When an output finishes, its interrupt starts the output at `gNext`. If a
+one-pixel output comes first, it finishes in about 30 µs. When the start loop is
+preempted for longer than that, the interrupt starts an output that the loop is still
+starting. That output then runs on two channels with one set of refill state, the
+channel that no longer gets refilled replays its buffer forever, and the last output
+never starts. The done count never reaches the number of outputs, and `show()` waits on
+its semaphore forever, until the task watchdog reboots the core. With the 400-pixel
+strips first, an output takes 12 ms to finish, far longer than the start loop.
+
+Seen 2026-10-27: 3 of 3 Echos hung on the first app connect after a flash. The core dump
+showed `loopTask` in `showPixels` (`xSemaphoreTake`, clockless_rmt_esp32.cpp:204), with
+the start loop exited at `channel = 4` when 3 outputs should end it at 6. The BLE and
+mic tasks were idle. With the strips registered first, 5 of 5 reflash-and-connect rounds
+on the same Echo ran clean.
+
 **Claimed pins** are never configured or read by the wiring runtime. When a claim ends
 (mic turned off), the pin's role resumes from rest, without firing edges.
 
