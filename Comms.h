@@ -45,6 +45,10 @@ GlobalProperty<int> meshShowProp("f4d7b6bd-aeb2-4ea1-a5fc-254e3db10200", "meshSh
 void meshGroupChanged(); // defined in the sketch, next to the mesh instance
 GlobalProperty<String> meshGroupProp("12239682-6d25-45d1-a3b5-182dfa6cf106", "meshGroup", &localPrefs.meshGroup, meshGroupChanged);
 GlobalProperty<int> carouselBeatsProp("1bc3f537-b285-4def-a2f9-285dae0b2aaa", "carouselBeats", &localPrefs.carouselBeats, 1, 64);
+WiringProperty wiringProp("2be57867-0fd5-45b7-93af-c9edff69fe60", "wiring", &localPrefs.wiring);
+PinStatusProperty pinStatusProp("53775889-c119-4673-89f2-359a80fabcca", "pinStatus");
+BLEStringCharacteristic wiringDocsChara("682bf183-44f6-4dc9-9eb0-640c05ae45db", BLERead, 512);
+BLEDescriptor wiringDocsNameDescriptor(kDescriptorUserDesc, "wiringDocs");
 
 // per-layer settings
 LayerProperty<float> speedProp("5341966c-da42-4b65-9c27-5de57b642e28", "speed", &ShinyLayerSettings::speed, 0.001f, 100.0f);
@@ -56,13 +60,14 @@ LayerProperty<LayerBlendMode> blendModeProp("03686c5c-6e6f-44f0-943f-db6388d9fdd
 LayerProperty<int, AnimationCodec> animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", &ShinyLayerSettings::animationIndex);
 LayerProperty<int> beatSyncProp("6f97efc2-096e-4704-9feb-f9c2f41577ee", "beatSync", &ShinyLayerSettings::beatSync, 0, 1);
 
-std::vector<GlobalPropertyBase*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &presetProp, &ledColorOrderProp, &ledCountProp, &maxCurrentProp, &micProp, &meshProp, &meshShowProp, &meshGroupProp, &carouselBeatsProp};
+std::vector<GlobalPropertyBase*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &presetProp, &ledColorOrderProp, &ledCountProp, &maxCurrentProp, &micProp, &meshProp, &meshShowProp, &meshGroupProp, &carouselBeatsProp, &wiringProp};
 std::vector<LayerPropertyBase*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp, &beatSyncProp};
 std::vector<Property*> props = [&] {
     std::vector<Property*> v;
-    v.reserve(globalProps.size() + layerProps.size());
+    v.reserve(globalProps.size() + layerProps.size() + 1);
     v.insert(v.end(), globalProps.begin(), globalProps.end());
     v.insert(v.end(), layerProps.begin(), layerProps.end());
+    v.push_back(&pinStatusProp);
     return v;
 }();
 
@@ -133,6 +138,9 @@ void commsSetup(void)
     documentationChara.addDescriptor(documentationNameDescriptor);
     shinerService.addCharacteristic(documentationChara);
     documentationChara.writeValue(buildDocumentationJSON());
+    wiringDocsChara.addDescriptor(wiringDocsNameDescriptor);
+    shinerService.addCharacteristic(wiringDocsChara);
+    wiringDocsChara.writeValue(wiringDocsJSON(ACTIVE_BOARD));
 
     String name = ownerName + "'s shinercore";
     BLE.setDeviceName(name.c_str());

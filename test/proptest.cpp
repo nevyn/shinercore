@@ -175,6 +175,50 @@ int main() {
         expect("nvs cleared", nvs("brightness"), "<absent>");
     }
 
+    printf("wiring is stored synchronously and every write bumps the revision\n");
+    {
+        localPrefs = ShinySettings();
+        prefs = Prefs();
+        WiringProperty wiring("u3", "wiring", &localPrefs.wiring);
+        const std::string custom = "{\"G21\":{\"button\":\"toggleLights\"}}";
+        wiring.load();
+        expectInt("load bumps", wiring.revision, 1);
+        expect("default stored at load", wiring.chara.stored, encodeWiring(kAtomLite, defaultWiring(kAtomLite)).c_str());
+        wiring.chara.incoming = custom; wiring.chara._written = true;
+        wiring.poll();
+        expect("canonical stored without a flush", wiring.chara.stored, custom);
+        expectInt("applied write bumps", wiring.revision, 2);
+        expectInt("nothing staged for the limiter", wiring.flushPublish() ? 1 : 0, 0);
+        wiring.chara.incoming = "{\"G99\":{}}"; wiring.chara._written = true;
+        wiring.poll();
+        expectInt("rejected write bumps", wiring.revision, 3);
+        expect("rejected write keeps the wiring", wiring.chara.stored, custom);
+        wiring.update(1.0f);
+        expect("persists canonically", nvs("wiring"), custom);
+        wiring.chara.incoming = ""; wiring.chara._written = true;
+        wiring.poll();
+        wiring.update(1.0f);
+        expectInt("reset bumps", wiring.revision, 4);
+        expect("default stored as absence", nvs("wiring"), "<absent>");
+        prefs.strings["wiring"] = "{\"G19\":{\"knob\":\"brightness\",\"min\":0,\"max\":255}}";
+        wiring.load();
+        expect("invalid stored wiring loads as the default", wiring.chara.stored, encodeWiring(kAtomLite, defaultWiring(kAtomLite)).c_str());
+    }
+
+    printf("pinStatus stages on change only, at most every 100 ms\n");
+    {
+        PinStatusProperty status("u4", "pinStatus");
+        status.offer("07013c9e", 0.016f);
+        expectInt("first offer staged", status.flushPublish() ? 1 : 0, 1);
+        status.offer("07013c9f", 0.016f);
+        expectInt("change too soon not staged", status.flushPublish() ? 1 : 0, 0);
+        status.offer("07013c9f", 0.1f);
+        expectInt("change staged once the interval passed", status.flushPublish() ? 1 : 0, 1);
+        expect("latest sent", status.chara.stored, "07013c9f");
+        status.offer("07013c9f", 0.2f);
+        expectInt("unchanged not staged", status.flushPublish() ? 1 : 0, 0);
+    }
+
     printf(failures ? "\n%d FAILURES\n" : "\nall passed\n", failures);
     return failures ? 1 : 0;
 }

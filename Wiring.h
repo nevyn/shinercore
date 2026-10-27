@@ -80,6 +80,32 @@ struct BoardSpec
 
 extern const BoardSpec kAtomLite, kAtomEcho, kAtomS3Lite, kStickC;
 
+// The board this firmware is built for, its two Grove signal pins (FastLED
+// takes LED pins as template arguments) and its built-in pixel.
+#if defined(CONFIG_IDF_TARGET_ESP32S3) // M5AtomS3 Lite
+    #define ACTIVE_BOARD kAtomS3Lite
+    #define GROVE1_PIN 1
+    #define GROVE2_PIN 2
+    #define NEO_PIN 35
+#elif defined(ARDUINO_M5STACK_ATOM_ECHO) // no core defines this; see docs/building-and-testing.md
+    #define ACTIVE_BOARD kAtomEcho
+    #define GROVE1_PIN 26
+    #define GROVE2_PIN 32
+    #define NEO_PIN 27
+#elif defined(ARDUINO_M5STACK_ATOM) || defined(ARDUINO_M5Stack_ATOM)
+    #define ACTIVE_BOARD kAtomLite
+    #define GROVE1_PIN 26
+    #define GROVE2_PIN 32
+    #define NEO_PIN 27
+#elif defined(ARDUINO_M5Stick_C) || defined(ARDUINO_M5Stick_C_PLUS) || defined(ARDUINO_M5STACK_STICKC_PLUS)
+    #define ACTIVE_BOARD kStickC
+    #define GROVE1_PIN 32
+    #define GROVE2_PIN 33
+    #define NEO_PIN 26 // doesn't have one; this pin is just unused
+#else
+    #error undefined hardware
+#endif
+
 // The wiring that an unstored setting means: the pre-wiring firmware's fixed pins.
 Wiring defaultWiring(const BoardSpec &board);
 
