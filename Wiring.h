@@ -77,7 +77,6 @@ struct BoardSpec
     const char *labels[WIRING_MAX_PINS]; // as printed on the case, in status bit order
     uint8_t gpio[WIRING_MAX_PINS];
     const char *frontButtonLabel; // the button on the case's face; not in the status bit order
-    uint8_t frontButtonGpio;      // M5.BtnA's pin
     uint8_t analogMask;   // ADC1 pins; ADC2 stops working while wifi (the mesh) is up
     uint8_t ledMask;      // pins that FastLED can drive (it binds them at compile time)
     uint8_t claimMask;    // claimed by built-in hardware, always

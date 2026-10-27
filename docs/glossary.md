@@ -10,6 +10,8 @@ One term per concept. Use these in code, docs, the app and commits.
   "mode" or "binding".
 * **claim**: built-in hardware (speaker, microphone) using a pin, which makes the pin
   unavailable to wiring.
+* **front button**: the button on the face of the case. A wiring entry whose only role
+  is button; not "built-in button" or "BtnA".
 * **knob**: a potentiometer on an analog pin that writes one setting. Not "pot" in the
   app.
 * **target**: the setting a knob writes, such as `brightness` or `color1.h`.

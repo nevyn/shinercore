@@ -10,7 +10,7 @@ const BoardSpec kAtomLite = {
     "atom-lite", 8,
     {"G21", "G25", "G22", "G19", "G23", "G33", "G26", "G32"},
     {21, 25, 22, 19, 23, 33, 26, 32},
-    "G39", 39,
+    "G39",
     0xA0, 0xC0, 0x00, 0x30,
     {nullptr, nullptr, nullptr, nullptr, "microphone", "microphone", nullptr, nullptr},
 };
@@ -18,7 +18,7 @@ const BoardSpec kAtomEcho = {
     "atom-echo", 8,
     {"G21", "G25", "G22", "G19", "G23", "G33", "G26", "G32"},
     {21, 25, 22, 19, 23, 33, 26, 32},
-    "G39", 39,
+    "G39",
     0x80, 0xC0, 0x3C, 0x00,
     {nullptr, nullptr, "speaker", "speaker", "microphone", "microphone", nullptr, nullptr},
 };
@@ -26,12 +26,12 @@ const BoardSpec kAtomS3Lite = {
     "atoms3-lite", 8,
     {"G39", "G38", "G5", "G6", "G7", "G8", "G2", "G1"},
     {39, 38, 5, 6, 7, 8, 2, 1},
-    "G41", 41,
+    "G41",
     0xFC, 0xC0, 0x00, 0x00,
     {},
 };
 // No wiring pins: its two LED outputs stay fixed.
-const BoardSpec kStickC = {"m5stickc", 0, {}, {}, "G37", 37, 0, 0, 0, 0, {}};
+const BoardSpec kStickC = {"m5stickc", 0, {}, {}, "G37", 0, 0, 0, 0, {}};
 
 int BoardSpec::indexOf(const char *label) const
 {
