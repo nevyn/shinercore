@@ -8,6 +8,9 @@
   election, the preset carousel, wire formats, what's verified vs pending hardware.
 * [ble-comms.md](ble-comms.md) — the BLE property protocol: why its side effects are
   decoupled from writes, the ArduinoBLE credit-leak wedge and local patch, watchdog.
+* [wiring.md](wiring.md) — pin roles (switch, button, knob, LEDs): boards and pins,
+  the `wiring` JSON, the BLE characteristics and their MTU limits, runtime semantics.
+* [glossary.md](glossary.md) — the canonical term for each concept.
 
 The architecture brief and its invariants are in [../AGENTS.md](../AGENTS.md).
 The user-facing project readme is [../README.md](../README.md).
