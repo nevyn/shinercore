@@ -23,8 +23,9 @@ static const float kPersistSettleSeconds = 0.5;
 class Property
 {
 public:
-    Property(const char *uuid, const char *key)
-      : chara(uuid, BLERead | BLEWrite | BLENotify, 36),
+    Property(const char *uuid, const char *key,
+             unsigned char properties = BLERead | BLEWrite | BLENotify, int valueSize = 36)
+      : chara(uuid, properties, valueSize),
         key(key),
         nameDescriptor(kDescriptorUserDesc, key),
         formatDescriptor(kDescriptorPresentationFormat, kDescriptorPresentationFormat_String)
@@ -74,7 +75,7 @@ public:
     }
 protected:
     virtual void handleWrite(const String &wire) = 0;
-    void publish(const String &encoded)
+    virtual void publish(const String &encoded)
     {
         _publishValue = encoded;
         _publishDirty = true;
@@ -141,6 +142,10 @@ public:
         if(onChanged) onChanged();
     }
 protected:
+    GlobalProperty(const char *uuid, const char *key, unsigned char properties, int valueSize, T *field)
+      : GlobalPropertyBase(uuid, key, properties, valueSize), field(field), defaultValue(*field),
+        lo(*field), hi(*field), hasRange(false), onChanged(nullptr)
+    {}
     virtual void handleWrite(const String &wire)
     {
         T v;
@@ -164,6 +169,75 @@ protected:
     T lo, hi;
     bool hasRange;
     void (*onChanged)();
+};
+
+// The wiring setting (docs/wiring.md). Its characteristic has no notify, as a
+// notification can't carry it, so every change is stored synchronously (which
+// does no radio I/O) and bumps the revision that pinStatus announces.
+class WiringProperty : public GlobalProperty<Wiring>
+{
+public:
+    WiringProperty(const char *uuid, const char *key, Wiring *field)
+      : GlobalProperty<Wiring>(uuid, key, BLERead | BLEWrite, WIRING_MAX_BYTES, field)
+    {}
+    // Counts every applied, reset and rejected write, and the load, mod 256.
+    uint8_t revision = 0;
+    virtual void load()
+    {
+        String stored = prefs.getString(key.c_str(), "");
+        String error;
+        *field = defaultValue;
+        if(!stored.isEmpty() && !decodeWiring(ACTIVE_BOARD, stored, *field, error))
+        {
+            logger.print("stored wiring rejected, using the board default: "); logger.println(error);
+        }
+        publish(Codec<Wiring>::encode(*field));
+        logger.print(key); logger.print(" := "); logger.println(Codec<Wiring>::encode(*field));
+    }
+protected:
+    virtual void handleWrite(const String &wire)
+    {
+        Wiring v = defaultValue;
+        String error;
+        if(wire.isEmpty() || wire.equals(" ") || decodeWiring(ACTIVE_BOARD, wire, v, error))
+        {
+            set(v);
+        }
+        else
+        {
+            logger.print("wiring write rejected: "); logger.println(error);
+            publish(Codec<Wiring>::encode(*field));
+        }
+    }
+    virtual void publish(const String &encoded)
+    {
+        chara.writeValue(encoded);
+        revision++;
+    }
+};
+
+// Live pin readings for the app (docs/wiring.md, pinStatus): read and notify
+// only, never persisted.
+static const float kPinStatusInterval = 0.1;
+class PinStatusProperty : public Property
+{
+public:
+    PinStatusProperty(const char *uuid, const char *key)
+      : Property(uuid, key, BLERead | BLENotify, 20)
+    {}
+    // Stages status for the flush limiter when it changed, at most every kPinStatusInterval.
+    void offer(const String &status, float delta)
+    {
+        _sinceStaged += delta;
+        if(status == _staged || _sinceStaged < kPinStatusInterval) return;
+        _staged = status;
+        _sinceStaged = 0;
+        publish(status);
+    }
+protected:
+    virtual void handleWrite(const String &) {}
+    String _staged;
+    float _sinceStaged = kPinStatusInterval;
 };
 
 class LayerPropertyBase : public Property
@@ -201,6 +275,15 @@ public:
     {
         publish(C::encode(current()));
     }
+    // Sets one layer of the current preset, whichever layer the cursor
+    // addresses, and republishes only if the cursor addresses that layer.
+    void setLayer(int layer, const T &value)
+    {
+        T &field = localPrefs.layers[layer].*member;
+        field = constrained(value);
+        persist(layerKey(key, layer, localPrefs.currentPresetIndex), C::encode(field), C::encode(defaultValue));
+        if(layer == localPrefs.currentLayerIndex) republish();
+    }
 protected:
     T &current() { return localPrefs.layers[localPrefs.currentLayerIndex].*member; }
     virtual void handleWrite(const String &wire)
@@ -215,10 +298,7 @@ protected:
             republish(); // rejected; re-echo the actual value
             return;
         }
-        current() = constrained(v);
-        persist(layerKey(key, localPrefs.currentLayerIndex, localPrefs.currentPresetIndex),
-                C::encode(current()), C::encode(defaultValue));
-        republish();
+        setLayer(localPrefs.currentLayerIndex, v);
     }
     T constrained(const T &v) { return hasRange ? clampTo(v, lo, hi) : v; }
 

@@ -2,6 +2,7 @@
 #define __SHINY_TYPES__H
 #include "FastLED.h"
 #include <vector>
+#include "Wiring.h"
 
 enum RunMode
 {
@@ -88,6 +89,7 @@ struct ShinySettings
     int meshShow = 1;    // play neighbors' presets in the shared carousel
     String meshGroup;    // only mesh with cores in the same group; "" is a group too
     int carouselBeats = 8; // beats each carousel slot plays for
+    Wiring wiring = defaultWiring(ACTIVE_BOARD); // pin roles; see docs/wiring.md
     ShinyLayerSettings *currentLayer()
     {
         return &layers[currentLayerIndex];

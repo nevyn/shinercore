@@ -3,7 +3,8 @@
 
 void LayerAnimation::animate(float fraction)
 {
-    if(prefs->animationIndex == 0) return; // Nothing: skip the fill and blend entirely
+    if(prefs->animationIndex == 0 || gain == 0) return; // Nothing, or gated off: skip the fill and blend entirely
+    uint8_t amount = gain * 255 + 0.5f;
 
     backbuffer->fill(CRGB::Black);
     animationFuncs[prefs->animationIndex](this, time);
@@ -38,6 +39,6 @@ void LayerAnimation::animate(float fraction)
                 b.g == 255 ? 255 : min(255, (a.g << 8) / (255 - b.g)),
                 b.b == 255 ? 255 : min(255, (a.b << 8) / (255 - b.b))); break;
         }
-        frontbuffer->set(i, blended);
+        frontbuffer->set(i, amount == 255 ? blended : blend(a, blended, amount));
     }
 }

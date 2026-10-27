@@ -48,9 +48,10 @@ M5Unified/OverAnimate already does it → one line → minimum code that works.
 * **The BLE protocol is modal**: the layer/preset properties are a cursor selecting
   which layer the per-layer characteristics address. The cursor lives in
   localPrefs.currentLayerIndex/currentPresetIndex, owned by those two properties.
-* **Echo hardware**: GPIO 19/22/23/33 belong to the M5Atom Echo's speaker and mic. An
-  Echo is electrically indistinguishable from an Atom Lite at runtime — the Echo build
-  flag (see docs/building-and-testing.md) or the `mic` setting is how it's known.
+* **Echo hardware**: GPIO 19/22/23/33 belong to the M5Atom Echo's speaker and mic, so
+  the wiring treats them as claimed pins (docs/wiring.md). An Echo is electrically
+  indistinguishable from an Atom Lite at runtime — the Echo build flag (see
+  docs/building-and-testing.md) or the `mic` setting is how it's known.
 
 ## Building & verifying
 
@@ -71,6 +72,7 @@ firmware property (Comms.h) + a PropertyKey in CoreProps (ShinerCoreKit,
 Model/PropertyKey.swift) + a control box in the app's tab views + if enum-valued, the
 documentation characteristic JSON. The app subscribes to notifications; every settled
 value reaches it only because publish() is the sole change path — keep it that way.
+`wiring` is too long to notify; its changes are signalled by the revision in `pinStatus`.
 (Notifies are only-latest and rate-limited; intermediate values may never be sent.)
 
 ## OverAnimate

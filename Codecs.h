@@ -98,6 +98,12 @@ struct AnimationCodec {
     static String encode(int v) { return animationNames[v]; }
 };
 
+// Validated against the board this firmware is built for
+template<> struct Codec<Wiring> {
+    static bool decode(const String &s, Wiring &out) { String error; return decodeWiring(ACTIVE_BOARD, s, out, error); }
+    static String encode(const Wiring &v) { return encodeWiring(ACTIVE_BOARD, v); }
+};
+
 // Range clamping for the types where a range makes sense; identity for the rest
 // (enums are validated by their codec, CRGB components can't leave 0-255).
 static inline int clampTo(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
@@ -107,5 +113,6 @@ static inline String clampTo(const String &v, const String&, const String&) { re
 static inline CRGB clampTo(const CRGB &v, const CRGB&, const CRGB&) { return v; }
 static inline LayerBlendMode clampTo(LayerBlendMode v, LayerBlendMode, LayerBlendMode) { return v; }
 static inline LedColorOrder clampTo(LedColorOrder v, LedColorOrder, LedColorOrder) { return v; }
+static inline Wiring clampTo(const Wiring &v, const Wiring&, const Wiring&) { return v; }
 
 #endif

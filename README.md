@@ -51,6 +51,7 @@ Install the following libraries from
 - [ ] incorporate every other shinercore's primary color in the main animation
 - [x] sync the beat grid between shinercores; the most confident mic leads
 - [x] beat detection from the microphone (M5Atom Echo)
+- [x] switches, buttons and knobs on the Atom's pins, set up on the app's Wiring tab
 
 
 ## LED Strip Ordering Guide

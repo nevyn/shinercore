@@ -57,6 +57,7 @@ LayerAnimation layerAnimations[LAYER_COUNT] = {
 Mesh mesh;
 Mesh *Mesh::_instance = nullptr;
 void meshGroupChanged() { mesh.groupChanged(); }
+#include "WiringRuntime.h"
 
 
 
@@ -75,51 +76,12 @@ void displayUpdate(M5GFX &display)
 
 ///// Runtime things
 
-#define DIRECT_PRESET_PIN_COUNT 4
-
-#if defined(CONFIG_IDF_TARGET_ESP32S3) // M5AtomLiteS3
-    #define GROVE1_PIN 1
-    #define GROVE2_PIN 2
-    #define NEO_PIN 35
-    #define HAS_GPIO_CONTROLS
-    #define HAS_PRESET_PINS
-    const int presetPins[DIRECT_PRESET_PIN_COUNT] = {5, 6, 7, 8};
-    #define CYCLE_PIN 39
-    #define ENABLE_PIN 38
-#elif defined(ARDUINO_M5STACK_ATOM_ECHO) // no core defines this; build with
-    // arduino-cli compile -b m5stack:esp32:m5stack_atom --build-property "compiler.cpp.extra_flags=-DARDUINO_M5STACK_ATOM_ECHO"
-    #define GROVE1_PIN 26
-    #define GROVE2_PIN 32
-    #define NEO_PIN 27
-    #define HAS_GPIO_CONTROLS
-    // no preset pins: 19/22/23/33 belong to the Echo's speaker and mic
-    #define CYCLE_PIN 21
-    #define ENABLE_PIN 25
-#elif defined(ARDUINO_M5STACK_ATOM) || defined(ARDUINO_M5Stack_ATOM)
-    #define GROVE1_PIN 26
-    #define GROVE2_PIN 32
-    #define NEO_PIN 27
-    #define HAS_GPIO_CONTROLS
-    #define HAS_PRESET_PINS
-    const int presetPins[DIRECT_PRESET_PIN_COUNT] = {22, 19, 23, 33};
-    #define CYCLE_PIN 21
-    #define ENABLE_PIN 25
-#elif defined(ARDUINO_M5Stick_C) || defined(ARDUINO_M5Stick_C_PLUS) || defined(ARDUINO_M5STACK_STICKC_PLUS)
-    #define GROVE1_PIN 32
-    #define GROVE2_PIN 33
-    #define NEO_PIN 26 // doesn't have one; this pin is just unused
-#else
-    #error undefined hardware
-#endif
-
 void setup(void) {
     M5.begin();
     Serial.begin(115200);
 
     M5.update();
 
-    FastLED.addLeds<WS2811, GROVE1_PIN, RGB>(rgbs, MAX_LED_COUNT);
-    FastLED.addLeds<WS2811, GROVE2_PIN, RGB>(rgbs, MAX_LED_COUNT);
     // The builtin pixel is GRB hardware on every variant, and unlike the strip
     // buffer it never passes through applyLedColorOrder
     FastLED.addLeds<WS2811, NEO_PIN, GRB>(btnled, 1);
@@ -127,17 +89,7 @@ void setup(void) {
     FastLED.show();
 
     commsSetup();
-
-#ifdef HAS_PRESET_PINS
-    for(int i = 0; i < DIRECT_PRESET_PIN_COUNT; i++)
-    {
-        pinMode(presetPins[i], INPUT_PULLUP);
-    }
-#endif
-#ifdef HAS_GPIO_CONTROLS
-    pinMode(CYCLE_PIN, INPUT_PULLUP);
-    pinMode(ENABLE_PIN, INPUT_PULLUP);
-#endif
+    wiringSetup(); // after commsSetup has loaded the wiring
 
     if(M5.getDisplayCount() > 0)
     {
@@ -170,7 +122,7 @@ void loop(void) {
     TimeInterval delta = diff/1000.0;
     if(delta > 0.1) delta = 0.1; // a stalled frame plays out in slow motion, not as a teleport
 
-    update();
+    update(delta);
     commsUpdate(delta);
     beats.update(delta);
     mesh.update(delta); // may pull the beat grid; before deriving render state
@@ -179,14 +131,14 @@ void loop(void) {
     ledstrip.fill(CRGB::Black); // TODO: clear with layer 0 instead, to allow feedback patterns
     ansys.playElapsedTime(delta);
     applyLedColorOrder(rgbs, localPrefs.ledCount);
-    if(localPrefs.maxCurrentMa)
+    if(localPrefs.maxCurrentMa && stripOutputs)
     {
-        // Both outputs mirror this buffer, so each gets half the budget. Not
-        // FastLED.setMaxPowerInVoltsAndMilliamps: that sums the controllers,
-        // registered at MAX_LED_COUNT, and the phantom LEDs' ~1mA/LED dark
-        // power eats most of the budget.
+        // Every output mirrors this buffer, so each gets an equal share of the
+        // budget. Not FastLED.setMaxPowerInVoltsAndMilliamps: that sums the
+        // controllers, registered at MAX_LED_COUNT, and the phantom LEDs'
+        // ~1mA/LED dark power eats most of the budget.
         FastLED.setBrightness(calculate_max_brightness_for_power_vmA(
-            rgbs, localPrefs.ledCount, FastLED.getBrightness(), 5, localPrefs.maxCurrentMa / 2));
+            rgbs, localPrefs.ledCount, FastLED.getBrightness(), 5, localPrefs.maxCurrentMa / stripOutputs));
     }
     FastLED.show();
 
@@ -244,6 +196,11 @@ void applyDerivedState(TimeInterval dt)
         shown.animationIndex = target.animationIndex;
         shown.beatSync = target.beatSync;
 
+        // Snapped at the ends, so a closed gate reaches exactly 0 and the layer stops rendering
+        float gate = layerGate[i] ? 1 : 0;
+        float gain = slew(layerAnimations[i].gain, gate, alpha);
+        layerAnimations[i].gain = fabsf(gate - gain) < 0.002f ? gate : gain;
+
         if(shown.beatSync)
         {
             // speed is beats per cycle: phase-lock the animation to the beat
@@ -296,14 +253,7 @@ void toggleMode()
 
 bool builtinLongPressHandled = false;
 
-#ifdef HAS_GPIO_CONTROLS
-bool enablePinOverride = false; // true when ENABLE_PIN is actively pulling low
-bool cyclePinPressed = false;
-unsigned long cyclePinPressedAt = 0;
-bool cyclePinLongPressHandled = false;
-#endif
-
-void update(void)
+void update(TimeInterval dt)
 {
     // Built-in button: short press = cycle preset, long press = on/off
     if(M5.BtnA.wasPressed())
@@ -320,55 +270,7 @@ void update(void)
         cycleToNextPreset();
     }
 
-#ifdef HAS_PRESET_PINS
-    // GPIO direct preset buttons: pull low to select that preset. The mic
-    // claims these pins on an Atom wired like an Echo, so they're dead while
-    // it runs.
-    if(!localPrefs.micEnabled)
-    {
-        for(int i = 0; i < DIRECT_PRESET_PIN_COUNT; i++)
-        {
-            if(digitalRead(presetPins[i]) == LOW && localPrefs.currentPresetIndex != i)
-            {
-                presetProp.set(i);
-            }
-        }
-    }
-#endif
-#ifdef HAS_GPIO_CONTROLS
-
-    // GPIO cycle button: same behavior as built-in button
-    bool cyclePinNow = (digitalRead(CYCLE_PIN) == LOW);
-    if(cyclePinNow && !cyclePinPressed)
-    {
-        cyclePinPressed = true;
-        cyclePinPressedAt = millis();
-        cyclePinLongPressHandled = false;
-    }
-    if(cyclePinPressed && !cyclePinLongPressHandled && (millis() - cyclePinPressedAt) > 600)
-    {
-        cyclePinLongPressHandled = true;
-        toggleMode();
-    }
-    if(!cyclePinNow && cyclePinPressed)
-    {
-        cyclePinPressed = false;
-        if(!cyclePinLongPressHandled) cycleToNextPreset();
-    }
-
-    // GPIO enable pin: pull low = force off, floating/high = normal operation
-    bool enablePulledLow = (digitalRead(ENABLE_PIN) == LOW);
-    if(enablePulledLow && !enablePinOverride)
-    {
-        enablePinOverride = true;
-        modeProp.set(Off);
-    }
-    else if(!enablePulledLow && enablePinOverride)
-    {
-        enablePinOverride = false;
-        modeProp.set(On);
-    }
-#endif
+    wiringUpdate(dt);
 }
 
 // Apply color order transformation before FastLED.show()
