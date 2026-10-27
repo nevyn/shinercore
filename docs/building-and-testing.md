@@ -61,6 +61,28 @@ arduino-cli compile -b ... /tmp/meshbuild/shinercore
 
 Re-run the link loop after adding a new source file.
 
+## Debugging a hang: the core dump
+
+A task watchdog reboot prints a useless `|<-CORRUPTED` backtrace from the watchdog
+interrupt. The real state is in flash: the core's prebuilt IDF saves an ELF core dump of
+every task to the `coredump` partition (0x3F0000, 64 KB) on any panic, without logging
+it. Flashing an app doesn't erase the dump; the next panic overwrites it. Decoding the
+dump needs the exact ELF that was running. Its SHA prefix is the panic's
+`ELF file SHA256` line, so copy `<build-path>/shinercore.ino.elf` out of the build
+directory before the next compile overwrites it.
+
+```
+T=~/Library/Arduino15/packages/m5stack/tools   # Atom and Echo (ESP32)
+$T/esptool_py/4.5.1/esptool --chip esp32 --port /dev/cu.usbserial-XXX --baud 115200 \
+    read_flash 0x3F0000 0x10000 part.bin   # 460800 fails on the CH552 bridge
+python3 -c "import struct,sys; b=open('part.bin','rb').read(); n=struct.unpack('<I',b[:4])[0]; open('core.elf','wb').write(b[20:n-4])"
+$T/xtensa-esp-elf-gdb/11.2_20220823/bin/xtensa-esp32-elf-gdb -batch \
+    -ex "thread apply all bt" shinercore.ino.elf core.elf
+```
+
+The `ESP_CORE_DUMP_INFO` note in `core.elf` holds the app SHA it came from. The dump
+holds task stacks and TCBs, not globals: locals in the blocked frames are what you get.
+
 ## Hands-free audio testing
 
 The beat detector is tested by generating WAV test signals (python stdlib `wave`:
