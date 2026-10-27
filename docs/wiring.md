@@ -186,10 +186,12 @@ the LED role restarts the core 0.3 s later, after flushing every pending persist
 then, the pins registered at boot stay FastLED's and a new LED pin stays untouched. The
 power cap (`maxCurrent`) splits evenly across the registered outputs.
 
-The strips must be registered before the builtin pixel. FastLED 3.6's ESP32 RMT driver
-(`clockless_rmt_esp32.cpp`) starts one RMT channel per output in registration order and
-counts the started outputs in `gNext`, which it increments only after a channel has
-started. When an output finishes, its interrupt starts the output at `gNext`. If a
+FastLED 3.6's ESP32 RMT driver (`clockless_rmt_esp32.cpp`) has a start race that hangs
+`show()`, fixed in the nevyn/FastLED fork (building-and-testing.md). On an unpatched
+library, the strips must be registered before the builtin pixel; shinercore.ino keeps
+that order either way. The driver starts one RMT channel per output in registration
+order and counts the started outputs in `gNext`, which it increments only after a
+channel has started. When an output finishes, its interrupt starts the output at `gNext`. If a
 one-pixel output comes first, it finishes in about 30 µs. When the start loop is
 preempted for longer than that, the interrupt starts an output that the loop is still
 starting. That output then runs on two channels with one set of refill state, the
@@ -203,6 +205,14 @@ showed `loopTask` in `showPixels` (`xSemaphoreTake`, clockless_rmt_esp32.cpp:204
 the start loop exited at `channel = 4` when 3 outputs should end it at 6. The BLE and
 mic tasks were idle. With the strips registered first, 5 of 5 reflash-and-connect rounds
 on the same Echo ran clean.
+
+The patch holds a spinlock across the start loop and around the interrupt's
+`startNext`. The task's critical section masks the RMT interrupt on its core, so a
+channel that finishes early waits until every output in the first round has started.
+A stress sketch (the one-pixel output first, plus a task that preempts the start loop
+for 80 µs every tick) hung 25 times in a minute on stock 3.6.0. Patched, it ran
+24,500 frames over 5 minutes without a hang. FastLED 3.9.20 still has the race; 3.10
+replaced the driver.
 
 **Claimed pins** are never configured or read by the wiring runtime. When a claim ends
 (mic turned off), the pin's role resumes from rest, without firing edges.

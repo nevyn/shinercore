@@ -41,8 +41,8 @@ On any other build, beat detection can still be enabled at runtime with the
 Install the following libraries from
  the Arduino library manager:
 * M5Unified
-* FastLED
-* ArduinoBLE
+* FastLED: use the [nevyn/FastLED](https://github.com/nevyn/FastLED) fork, branch `shinercore`, instead
+* ArduinoBLE: use the [nevyn/ArduinoBLE](https://github.com/nevyn/ArduinoBLE) fork, branch `shinercore`, instead
 * [OverAnimate](https://github.com/nevyn/OverAnimate) isn't available from the library manager, so you'll need to manually clone it to your Arduino libraries folder
 
 ## todo
