@@ -11,6 +11,7 @@
 #include "LayerAnimation.h"
 #include "Animations.h"
 #include "ShinyTypes.h"
+#include "Transition.h"
 
 ////// Main state
 ShinySettings localPrefs;
@@ -34,6 +35,9 @@ SubStrip buttonled(btnled, 1);
 // applyDerivedState) so parameter changes glide instead of jumping
 ShinyLayerSettings renderedLayers[LAYER_COUNT];
 float renderedBrightness = 0;
+// The frame that a crossfade dissolves away from (docs/transitions.md)
+CRGB fadeFrom[MAX_LED_COUNT];
+float crossfadeLeft = 0;
 
 LayerAnimation layerAnimations[LAYER_COUNT] = {
     LayerAnimation(&backbuffer, &ledstrip, &renderedLayers[0]),
@@ -129,6 +133,7 @@ void loop(void) {
 
     ledstrip.fill(CRGB::Black); // TODO: clear with layer 0 instead, to allow feedback patterns
     ansys.playElapsedTime(delta);
+    applyCrossfade(delta);
     applyLedColorOrder(rgbs, localPrefs.ledCount);
     if(localPrefs.maxCurrentMa && stripOutputs)
     {
@@ -147,58 +152,72 @@ void loop(void) {
     }
 }
 
-// Exponential approach: how far to move toward a target this frame
-static const float kSettingsSlewTime = 0.2; // seconds to cover ~63% of a change
 static const float kBeatChaseGain = 2.0f;   // rate boost per cycle of beat-phase error
-static float slew(float current, float target, float alpha)
+
+// Dissolves from the frame on the strip now; called before this frame renders.
+void startCrossfade()
 {
-    return current + (target - current) * alpha;
+    memcpy(fadeFrom, rgbs, sizeof(rgbs));
+    applyLedColorOrder(fadeFrom, localPrefs.ledCount); // undoes the last frame's swap: every order is its own inverse
+    crossfadeLeft = kCrossfadeSeconds;
 }
-static CRGB slewColor(const CRGB &current, const CRGB &target, float alpha)
+
+void applyCrossfade(TimeInterval dt)
 {
-    // round away from current so the last step actually lands on the target
-    CRGB out;
-    for(int ch = 0; ch < 3; ch++)
+    if(crossfadeLeft <= 0) return;
+    crossfadeLeft -= dt;
+    float progress = crossfadeLeft <= 0 ? 1 : 1 - crossfadeLeft / kCrossfadeSeconds;
+    uint8_t amount = progress * 255 + 0.5f;
+    for(int i = 0; i < localPrefs.ledCount; i++)
     {
-        float v = slew(current.raw[ch], target.raw[ch], alpha);
-        out.raw[ch] = target.raw[ch] > current.raw[ch] ? (uint8_t)ceilf(v) : (uint8_t)floorf(v);
+        rgbs[i] = blend(fadeFrom[i], rgbs[i], amount);
     }
-    return out;
 }
 
 // Settings are canonical; push everything derived from them into the LED and
 // animation state every frame, so there are no sync obligations on writes.
-// Continuous parameters slew toward their targets so changes glide: colors
-// crossfade, wave periods stretch, brightness fades, presets morph into each
-// other. Discrete parameters (animation, blend mode) snap.
+// Small changes ease; large ones, and any change of animation or blend mode,
+// snap the rendered settings and crossfade the pixels (docs/transitions.md).
 void applyDerivedState(TimeInterval dt)
 {
-    float alpha = 1 - expf(-dt / kSettingsSlewTime);
+    float alpha = easeAlpha(dt);
 
-    renderedBrightness = slew(renderedBrightness, localPrefs.mode == Off ? 0 : localPrefs.brightness, alpha);
+    renderedBrightness = easeTo(renderedBrightness, localPrefs.mode == Off ? 0 : localPrefs.brightness, alpha, 2);
     FastLED.setBrightness((uint8_t)roundf(renderedBrightness));
     ledstrip.setNumPixels(localPrefs.ledCount);
     backbuffer.setNumPixels(localPrefs.ledCount);
     buttonled.fill(localPrefs.mode == Off ? CRGB::Black : renderedLayers[0].mainColor);
 
+    // own settings, or whichever preset the mesh carousel has on stage
+    const ShinyLayerSettings *targets[LAYER_COUNT];
+    bool crossfade = false;
     for(int i = 0; i < LAYER_COUNT; i++)
     {
-        // own settings, or whichever preset the mesh carousel has on stage
-        const ShinyLayerSettings &target = *mesh.carouselLayers(i);
-        ShinyLayerSettings &shown = renderedLayers[i];
-        shown.mainColor = slewColor(shown.mainColor, target.mainColor, alpha);
-        shown.secondaryColor = slewColor(shown.secondaryColor, target.secondaryColor, alpha);
-        shown.speed = slew(shown.speed, target.speed, alpha);
-        shown.p_tau = slew(shown.p_tau, target.p_tau, alpha);
-        shown.p_phi = slew(shown.p_phi, target.p_phi, alpha);
-        shown.blendMode = target.blendMode;
-        shown.animationIndex = target.animationIndex;
-        shown.beatSync = target.beatSync;
+        targets[i] = mesh.carouselLayers(i);
+        crossfade = crossfade || needsCrossfade(renderedLayers[i], *targets[i]);
+    }
+    if(crossfade) startCrossfade();
 
-        // Snapped at the ends, so a closed gate reaches exactly 0 and the layer stops rendering
-        float gate = layerGate[i] ? 1 : 0;
-        float gain = slew(layerAnimations[i].gain, gate, alpha);
-        layerAnimations[i].gain = fabsf(gate - gain) < 0.002f ? gate : gain;
+    for(int i = 0; i < LAYER_COUNT; i++)
+    {
+        const ShinyLayerSettings &target = *targets[i];
+        ShinyLayerSettings &shown = renderedLayers[i];
+        if(crossfade)
+        {
+            shown = target;
+        }
+        else
+        {
+            shown.mainColor = easeColor(shown.mainColor, target.mainColor, alpha);
+            shown.secondaryColor = easeColor(shown.secondaryColor, target.secondaryColor, alpha);
+            shown.speed = easeSpeed(shown.speed, target.speed, alpha);
+            shown.p_tau = easeParam(shown.p_tau, target.p_tau, alpha);
+            shown.p_phi = easeParam(shown.p_phi, target.p_phi, alpha);
+            shown.beatSync = target.beatSync;
+        }
+
+        // Lands exactly on 0, so a closed gate stops the layer rendering
+        layerAnimations[i].gain = easeTo(layerAnimations[i].gain, layerGate[i] ? 1 : 0, alpha, 0.01f);
 
         if(shown.beatSync)
         {

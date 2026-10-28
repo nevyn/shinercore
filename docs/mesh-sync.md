@@ -43,16 +43,16 @@ With `meshShow` on, every core plays every core's current preset: slots =
 is `floor(beatTime / carouselBeats) mod slots` — derived from the shared grid, so
 synced cores show the same preset and switch on the same downbeat, zero
 coordination. Each layer crosses over at its own deterministically-random point in
-the slot's first 2 beats (same on every core), overlapping into a tween as
-renderedLayers slew to the new targets.
+the slot's first 2 beats (same on every core), and eases or crossfades to the
+new preset ([transitions.md](transitions.md)).
 
 localPrefs stays canonical: app edits land there, broadcast after settling, and walk
 on stage when your own slot comes around. Solo (no neighbors), the carousel
 degenerates to playing your own preset — behavior unchanged.
 
 Lockstep is only as tight as the neighbor tables: cores at radio-range edges hear
-different sets, and a join/leave remaps everyone's slot list mid-slot. The settings
-slew keeps those moments graceful rather than correct.
+different sets, and a join/leave remaps everyone's slot list mid-slot. Transitions keep
+those moments graceful rather than correct.
 
 ## Settings
 

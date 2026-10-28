@@ -161,7 +161,7 @@ once:
 on press.
 
 **Layer gates** are runtime-only, start open at boot, and are not stored or sent over
-BLE. A gate fades its layer in and out with the settings slew (`renderedLayers`); the
+BLE. A gate fades its layer in and out with the settings ease ([transitions.md](transitions.md)); the
 layer composites as `blend(under, blendMode(under, layer), gain)`. A switch on a layer
 overrides any button toggle of the same layer.
 

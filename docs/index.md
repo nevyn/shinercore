@@ -4,6 +4,8 @@
   board variants, host tests, serial monitoring, hands-free audio testing.
 * [beat-detection.md](beat-detection.md) — the onset detector and beat-tracking PLL:
   design, tunings that came from measurement, known failure modes, planned directions.
+* [transitions.md](transitions.md) — how settings changes reach the pixels: small ones
+  ease, large ones crossfade, and both finish within 0.5 s.
 * [mesh-sync.md](mesh-sync.md) — ESP-NOW sync: shared beat grid with implicit leader
   election, the preset carousel, wire formats, what's verified vs pending hardware.
 * [ble-comms.md](ble-comms.md) — the BLE property protocol: why its side effects are

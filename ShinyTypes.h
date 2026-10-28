@@ -75,6 +75,7 @@ struct ShinySettings
     ShinyLayerSettings layers[LAYER_COUNT];
     int currentLayerIndex = 0;
     int currentPresetIndex = 0;
+    int bootPreset = -1; // the power-on preset, which also turns the lights on; -1 resumes as left
     LedColorOrder ledColorOrder = LedOrderGRB;
     int ledCount = MAX_LED_COUNT/2;
     // Battery budget across both strip outputs, 0 = uncapped. A hot frame dims
