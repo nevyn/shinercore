@@ -36,6 +36,7 @@ GlobalProperty<int> brightnessProp("2B01", "brightness", &localPrefs.brightness,
 GlobalProperty<String> nameProp("7ad50f2a-01b5-4522-9792-d3fd4af5942f", "name", &ownerName);
 GlobalProperty<int> layerProp("0a7eadd8-e4b8-4384-8308-e67a32262cc4", "layer", &localPrefs.currentLayerIndex, 0, LAYER_COUNT-1, republishLayers);
 GlobalProperty<int> presetProp("8b989f5e-3d22-4377-80c9-c54eeb459518", "preset", &localPrefs.currentPresetIndex, 0, PRESET_COUNT-1, loadLayers);
+GlobalProperty<int> bootPresetProp("ffc4df79-8c9c-4efc-8d8f-867b2a776717", "bootPreset", &localPrefs.bootPreset, -1, PRESET_COUNT-1);
 GlobalProperty<int> ledCountProp("f5c67dcb-8798-4818-901f-cff9917d1a62", "ledCount", &localPrefs.ledCount, 0, MAX_LED_COUNT);
 GlobalProperty<int> maxCurrentProp("2b6d7f98-2df7-446d-a0df-112e34d202f5", "maxCurrent", &localPrefs.maxCurrentMa, 0, 10000);
 GlobalProperty<LedColorOrder> ledColorOrderProp("f3b7c8a1-5d2e-4f19-8c6a-9e1d0b2c3a4f", "ledColorOrder", &localPrefs.ledColorOrder);
@@ -60,7 +61,7 @@ LayerProperty<LayerBlendMode> blendModeProp("03686c5c-6e6f-44f0-943f-db6388d9fdd
 LayerProperty<int, AnimationCodec> animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", &ShinyLayerSettings::animationIndex);
 LayerProperty<int> beatSyncProp("6f97efc2-096e-4704-9feb-f9c2f41577ee", "beatSync", &ShinyLayerSettings::beatSync, 0, 1);
 
-std::vector<GlobalPropertyBase*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &presetProp, &ledColorOrderProp, &ledCountProp, &maxCurrentProp, &micProp, &meshProp, &meshShowProp, &meshGroupProp, &carouselBeatsProp, &wiringProp};
+std::vector<GlobalPropertyBase*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &presetProp, &bootPresetProp, &ledColorOrderProp, &ledCountProp, &maxCurrentProp, &micProp, &meshProp, &meshShowProp, &meshGroupProp, &carouselBeatsProp, &wiringProp};
 std::vector<LayerPropertyBase*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp, &beatSyncProp};
 std::vector<Property*> props = [&] {
     std::vector<Property*> v;
@@ -126,6 +127,12 @@ void commsSetup(void)
     for(const auto& prop: globalProps)
     {
         prop->load();
+    }
+    // An installation that loses power nightly comes back on with the same preset every morning
+    if(localPrefs.bootPreset >= 0)
+    {
+        if(localPrefs.mode != On) modeProp.set(On);
+        if(localPrefs.currentPresetIndex != localPrefs.bootPreset) presetProp.set(localPrefs.bootPreset);
     }
     // No central yet, so these can't block; the GATT store must be populated
     // before advertising rather than trickling out through the flush limiter
