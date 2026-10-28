@@ -38,7 +38,8 @@ M5Unified/OverAnimate already does it → one line → minimum code that works.
   animation function — that's what makes layering compose and future mesh sync
   possible. Use the hash() helpers for randomness. (Fire2012 stayed dead for this
   reason; it needs per-layer state to come back.)
-* **Time never jumps.** Rates change, positions don't: settings slew (renderedLayers),
+* **Time never jumps.** Rates change, positions don't: settings ease or crossfade
+  (docs/transitions.md),
   beat-synced layers chase by rate modulation, OverAnimate accumulates phase. If your
   change can make a pixel teleport in phase-space, redesign it.
 * **NVS compatibility is sacred.** Keys are `<name>-<layer>[-<preset>]`, preset 0

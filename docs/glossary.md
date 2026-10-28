@@ -18,6 +18,10 @@ One term per concept. Use these in code, docs, the app and commits.
 * **layer gate**: the runtime on/off state of a layer that switches and buttons
   control; fades the layer rather than cutting it.
 * **preset**: one of the five stored sets of layer settings.
+* **ease**: how a small settings change reaches the pixels: the rendered value glides
+  to the target. Not "slew" or "tween". See [transitions.md](transitions.md).
+* **crossfade**: how a large settings change reaches the pixels: the strip dissolves
+  from the last frame to the new scene. Not "fade" or "morph".
 * **layer**: one of the ten composited animations in a preset.
 * **power cap**: the `maxCurrent` setting: an estimated current budget that bright
   frames are dimmed to fit. An estimate from frame data, never a measurement.

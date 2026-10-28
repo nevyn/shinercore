@@ -1,5 +1,5 @@
 #!/bin/sh
-# Host-side tests: pure logic only (codecs, migration, wiring), Arduino surface stubbed.
+# Host-side tests: pure logic only (codecs, migration, wiring, transitions), Arduino surface stubbed.
 # They build as an Atom Lite; wiringtest passes every board explicitly.
 set -e
 cd "$(dirname "$0")"
@@ -9,6 +9,7 @@ HOST="-I stubs -I $HOME/Dev/Arduino/libraries/ArduinoJson/src -DARDUINO_M5STACK_
 clang++ -std=c++17 $HOST -o build/codectest codectest.cpp ../ShinyTypes.cpp ../Wiring.cpp
 clang++ -std=c++17 -o build/migrationtest migrationtest.cpp
 clang++ -std=c++17 $HOST -o build/meshtest meshtest.cpp ../ShinyTypes.cpp ../Wiring.cpp
+clang++ -std=c++17 $HOST -o build/transitiontest transitiontest.cpp ../ShinyTypes.cpp ../Wiring.cpp
 clang++ -std=c++17 $HOST -o build/proptest proptest.cpp ../ShinyTypes.cpp ../Wiring.cpp
 # C++11 like the ESP32 toolchain, so device-only syntax errors show up here first
 clang++ -std=c++11 $HOST -o build/wiringtest wiringtest.cpp ../Wiring.cpp ../ShinyTypes.cpp
@@ -16,5 +17,6 @@ clang++ -std=c++11 $HOST -o build/wiringtest wiringtest.cpp ../Wiring.cpp ../Shi
 ./build/codectest
 ./build/migrationtest
 ./build/meshtest
+./build/transitiontest
 ./build/proptest
 ./build/wiringtest
