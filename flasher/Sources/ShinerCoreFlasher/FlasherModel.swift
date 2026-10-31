@@ -12,6 +12,8 @@ final class FlasherModel {
 
     var devices: [SerialDevice] = []
     var sessions: [String: CoreSession] = [:]
+    /// Ports that vanished while their session was busy.
+    private var departed: Set<String> = []
     var catalog: CatalogSnapshot?
     var cacheWarning: String?
     /// The navigation stack: device paths whose detail is open.
@@ -42,8 +44,8 @@ final class FlasherModel {
 
     func devicesChanged(_ devices: [SerialDevice]) {
         self.devices = devices
-        for (path, session) in sessions where !devices.contains(where: { $0.path == path }) && !session.isBusy {
-            sessions[path] = nil
+        for (path, session) in sessions where !devices.contains(where: { $0.path == path }) {
+            if session.isBusy { departed.insert(path) } else { sessions[path] = nil }
         }
         path.removeAll { sessions[$0] == nil }
         for device in devices where sessions[device.path] == nil {
@@ -54,6 +56,18 @@ final class FlasherModel {
     }
 
     func open(_ session: CoreSession) { path = [session.id] }
+
+    /// A session whose port vanished mid-operation describes a core that may have changed since
+    /// (a half-written install), so it identifies again if the port is back, or goes away.
+    func operationFinished(_ session: CoreSession) {
+        guard departed.remove(session.device.path) != nil else { return }
+        if devices.contains(where: { $0.path == session.device.path }) {
+            session.identify()
+        } else {
+            sessions[session.device.path] = nil
+            path.removeAll { sessions[$0] == nil }
+        }
+    }
 
     func refreshCatalog() {
         Task {

@@ -250,6 +250,7 @@ final class CoreSession: Identifiable {
         task = Task {
             await body(self)
             self.activity = .idle
+            app.operationFinished(self)
         }
     }
 

@@ -73,6 +73,8 @@ final class ReplayRunner: EsptoolRunner, @unchecked Sendable {
         var transcript: String
         var status: Int32 = 0
         var fingerprint: Data?
+        /// Awaited before the step answers, to hold the operation in flight.
+        var gate: (@Sendable () async -> Void)?
     }
 
     private let lock = NSLock()
@@ -86,6 +88,7 @@ final class ReplayRunner: EsptoolRunner, @unchecked Sendable {
             invocations.append(arguments)
             return steps.removeFirst()
         }
+        await step.gate?()
         if let fingerprint = step.fingerprint, let output = arguments.last {
             try fingerprint.write(to: URL(fileURLWithPath: output))
         }

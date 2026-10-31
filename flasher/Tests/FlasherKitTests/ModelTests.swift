@@ -111,6 +111,37 @@ enum States {
         #expect(model.path.isEmpty)
     }
 
+    @Test func identifiesAgainWhenAPortReturnsAfterVanishingMidOperation() async throws {
+        let (released, release) = AsyncStream.makeStream(of: Void.self)
+        let blank = ReplayRunner.Step(transcript: Fixture.text("identify-blank-s3.txt"), fingerprint: Data(repeating: 0x12, count: 32))
+        var held = blank
+        held.gate = { for await _ in released { return } }
+        let runner = ReplayRunner([held, blank])
+        let model = States.model(runner: runner)
+        model.devicesChanged([States.s3Port])
+        let session = try #require(model.sessions[States.s3Port.path])
+        model.devicesChanged([])
+        model.devicesChanged([States.s3Port])
+        #expect(model.sessions[States.s3Port.path] === session)
+        release.yield()
+        while runner.invocations.count < 2 || session.isBusy { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(session.summary == "Something else is installed")
+    }
+
+    @Test func dropsASessionWhosePortIsStillGoneWhenItsOperationEnds() async throws {
+        let (released, release) = AsyncStream.makeStream(of: Void.self)
+        var held = ReplayRunner.Step(transcript: Fixture.text("identify-blank-s3.txt"), fingerprint: Data(repeating: 0x12, count: 32))
+        held.gate = { for await _ in released { return } }
+        let model = States.model(runner: ReplayRunner([held]))
+        model.devicesChanged([States.s3Port])
+        let session = try #require(model.sessions[States.s3Port.path])
+        model.devicesChanged([])
+        #expect(model.sessions[States.s3Port.path] === session)
+        release.yield()
+        while session.isBusy { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(model.sessions[States.s3Port.path] == nil)
+    }
+
     @Test func judgesTheFingerprintAgainWhenTheCatalogArrivesLate() async throws {
         let memory = InMemoryBoardMemory()
         let runner = ReplayRunner([.init(transcript: Fixture.text("identify-shinercore-s3.txt"), fingerprint: Data(hexString: States.s3Board.elfSha256))])
