@@ -146,40 +146,45 @@ struct CoreDetailContent: View {
         DisclosureGroup("Advanced", isExpanded: $session.advancedExpanded) {
             Card {
                 VStack(alignment: .leading, spacing: 14) {
-                    if let selection = session.boardSelection {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Picker("Board", selection: Binding(get: { session.board?.id }, set: { if let id = $0 { session.chooseBoard(id) } })) {
-                                if session.board == nil { Text("Choose…").tag(String?.none) }
-                                ForEach(selection.options) { board in Text(board.name).tag(String?.some(board.id)) }
-                            }
-                            Text(selection.caption(chosen: session.chosenBoardID != nil)).font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                    if !session.app.builds.isEmpty {
-                        Picker("Firmware build", selection: Binding(get: { session.selectedBuild?.id }, set: { session.selectedBuildID = $0 })) {
-                            ForEach(Array(session.app.builds.enumerated()), id: \.element.id) { index, build in
-                                Text(build.label(latest: index == 0)).tag(String?.some(build.id))
-                            }
-                        }
-                    }
-                    Toggle(isOn: $session.factoryReset) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Factory reset")
-                            Text("Also erases presets, wiring and settings.").font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
+                    settings.disabled(session.isBusy)
                     Divider()
                     facts
                     HStack {
                         Text("esptool output").font(.subheadline.weight(.medium))
                         Spacer()
-                        Button("Check again") { session.identify() }.controlSize(.small)
+                        Button("Check again") { session.identify() }.controlSize(.small).disabled(session.isBusy)
                     }
                     LogView(text: session.log.joined(separator: "\n"))
                 }
-                .disabled(session.isBusy)
             }
             .padding(.top, 8)
+        }
+    }
+
+    private var settings: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if let selection = session.boardSelection {
+                VStack(alignment: .leading, spacing: 4) {
+                    Picker("Board", selection: Binding(get: { session.board?.id }, set: { if let id = $0 { session.chooseBoard(id) } })) {
+                        if session.board == nil { Text("Choose…").tag(String?.none) }
+                        ForEach(selection.options) { board in Text(board.name).tag(String?.some(board.id)) }
+                    }
+                    Text(selection.caption(chosen: session.chosenBoardID != nil)).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if !session.app.builds.isEmpty {
+                Picker("Firmware build", selection: Binding(get: { session.selectedBuild?.id }, set: { session.selectedBuildID = $0 })) {
+                    ForEach(Array(session.app.builds.enumerated()), id: \.element.id) { index, build in
+                        Text(build.label(latest: index == 0)).tag(String?.some(build.id))
+                    }
+                }
+            }
+            Toggle(isOn: $session.factoryReset) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Factory reset")
+                    Text("Also erases presets, wiring and settings.").font(.caption).foregroundStyle(.secondary)
+                }
+            }
         }
     }
 
