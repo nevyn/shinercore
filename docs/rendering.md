@@ -14,7 +14,9 @@ drifting from the strip; a hand-written Swift port drifted the day it was writte
   table: each entry's name, function, color use and parameter names.
   `kBlendModeNames` and `LayerBlendMode` are the blend modes. `compositeLayer` is
   one layer's step of a frame: render the animation into a scratch buffer, then
-  blend it into the frame at the layer gate's gain.
+  blend it into the frame at the layer's gain. Gain is how strongly the layer mixes
+  in, 0-1: the mix between the frame without the layer and the frame with it fully
+  blended in. The firmware passes the layer gate's fade times the layer's opacity.
 * `RenderMath.h`: private helpers (`curve`, `hash`, gamma, color scaling).
 * `Animations.cpp`, `Composite.cpp`, `ShinerRender.cpp`: the implementations.
 * `host/FastLED.h`: the FastLED stand-in for builds that aren't the firmware.
@@ -25,8 +27,8 @@ package by revision.
 
 The library has no Arduino, M5Unified, OverAnimate or BeatDetector dependency. The
 firmware passes in what those provided: `LayerAnimation::animate` hands
-`compositeLayer` the strip buffers, the layer's eased settings, its time in cycles and
-the beat envelope.
+`compositeLayer` the strip buffers, the layer's eased settings, its time in cycles,
+the beat envelope and its gain.
 
 ## The C API is a contract
 

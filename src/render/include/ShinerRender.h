@@ -26,7 +26,8 @@ typedef struct {
     /// Animation cycles elapsed: seconds divided by the layer's speed, or beats divided
     /// by speed when the layer is beat synced. Unbounded; only the fraction is periodic.
     double time;
-    /// The layer gate's fade, 0-1. 0 skips the layer, 1 blends it at full strength.
+    /// How strongly the layer mixes in, 0-1. 0 skips the layer, 1 blends it at full
+    /// strength. The firmware passes the layer gate's fade times the layer's opacity.
     float gain;
 } ShinerLayer;
 
