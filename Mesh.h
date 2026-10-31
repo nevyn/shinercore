@@ -223,16 +223,7 @@ private:
         {
             const ShinyLayerSettings &l = localPrefs.layers[i];
             if(l.animationIndex == 0) continue; // Nothing
-            MeshPresetLayer &out = frame.layers[frame.layerCount++];
-            out.layer = i;
-            out.animation = l.animationIndex;
-            out.blendMode = l.blendMode;
-            out.beatSync = l.beatSync;
-            out.color1[0] = l.mainColor.r; out.color1[1] = l.mainColor.g; out.color1[2] = l.mainColor.b;
-            out.color2[0] = l.secondaryColor.r; out.color2[1] = l.secondaryColor.g; out.color2[2] = l.secondaryColor.b;
-            out.speed = l.speed;
-            out.tau = l.p_tau;
-            out.phi = l.p_phi;
+            meshEncodeLayer(i, l, frame.layers[frame.layerCount++]);
         }
         size_t size = offsetof(MeshPresetFrame, layers) + frame.layerCount * sizeof(MeshPresetLayer);
         memcpy(_sentPreset, localPrefs.layers, sizeof(_sentPreset));
@@ -275,21 +266,11 @@ private:
         MeshNeighbor *n = upsertNeighbor(mac);
         if(!n) return;
 
-        // decode with hostile-input clamps: anyone can broadcast ESP-NOW frames
         for(int i = 0; i < LAYER_COUNT; i++) n->preset[i] = ShinyLayerSettings();
         for(int i = 0; i < frame->layerCount; i++)
         {
             const MeshPresetLayer &in = frame->layers[i];
-            if(in.layer >= LAYER_COUNT) continue;
-            ShinyLayerSettings &l = n->preset[in.layer];
-            l.animationIndex = in.animation < (int)animationNames.size() ? in.animation : 0;
-            l.blendMode = in.blendMode < BlendModeCount ? (LayerBlendMode)in.blendMode : BlendModeAdd;
-            l.beatSync = in.beatSync ? 1 : 0;
-            l.mainColor = CRGB(in.color1[0], in.color1[1], in.color1[2]);
-            l.secondaryColor = CRGB(in.color2[0], in.color2[1], in.color2[2]);
-            l.speed = isfinite(in.speed) ? clampTo(in.speed, 0.001f, 100.0f) : 1.0f;
-            l.p_tau = isfinite(in.tau) ? clampTo(in.tau, -100.0f, 100.0f) : 10.0f;
-            l.p_phi = isfinite(in.phi) ? clampTo(in.phi, -100.0f, 100.0f) : 4.0f;
+            if(in.layer < LAYER_COUNT) meshDecodeLayer(in, n->preset[in.layer]);
         }
         n->hasPreset = true;
     }

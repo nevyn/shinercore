@@ -6,8 +6,9 @@ IDF's arbiter. BLE device-to-device was abandoned: ESP32 BLE can barely host one
 central connection while being a peripheral. Radio and protocol live in Mesh.h; the
 pure decision math and wire formats in MeshLogic.h (host-tested in test/meshtest.cpp).
 
-Everything is broadcast, versioned (`kMeshVersion`), idempotent, and must survive
-lost frames. Cores that disagree on protocol version ignore each other's frames.
+Everything is broadcast, versioned (`kMeshVersion`, 4 since layers carry opacity),
+idempotent, and must survive lost frames. Cores that disagree on protocol version
+ignore each other's frames.
 
 ## Frames
 
@@ -16,8 +17,9 @@ lost frames. Cores that disagree on protocol version ignore each other's frames.
   (carried for future color-merging features).
 - **PRESET**: every non-Nothing layer of the sender's current preset, one frame.
   Sent when the preset has changed and settled for 1s, plus a 5s refresh.
-  Animation/blend travel as indices, only meaningful same-version. Decoded with
-  hostile-input clamps: anyone can broadcast ESP-NOW.
+  Animation/blend travel as indices, only meaningful same-version. Opacity travels
+  as one byte, 0-255 for 0-1: a float would push ten layers past 250 bytes. Decoded
+  with hostile-input clamps: anyone can broadcast ESP-NOW.
 
 ## Beat grid sync
 
