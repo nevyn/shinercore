@@ -14,6 +14,8 @@ env:
   FASTLED_SHA: 4a0f6a44602038ebc7d0143d70f16384ad6a1b16
   OVERANIMATE_SHA: 1ff0861f294fc38345411ccc94bb574729f51701
   ARDUINOJSON_TAG: v7.4.2
+  M5UNIFIED_TAG: 0.1.14
+  M5GFX_TAG: 0.1.15
 
 jobs:
   build:
@@ -36,6 +38,8 @@ jobs:
           fetch nevyn/FastLED FastLED $FASTLED_SHA
           fetch nevyn/OverAnimate OverAnimate $OVERANIMATE_SHA
           git clone -q --depth 1 -b $ARDUINOJSON_TAG https://github.com/bblanchon/ArduinoJson.git $libs/ArduinoJson
+          git clone -q --depth 1 -b $M5UNIFIED_TAG https://github.com/m5stack/M5Unified.git $libs/M5Unified
+          git clone -q --depth 1 -b $M5GFX_TAG https://github.com/m5stack/M5GFX.git $libs/M5GFX
 
       - name: Host tests
         run: test/run.sh
