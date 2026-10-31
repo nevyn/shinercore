@@ -67,5 +67,5 @@ jobs:
             gh release upload $tag dist/* --clobber
           else
             gh release create $tag dist/* --prerelease --target $GITHUB_SHA \
-              --title "Firmware ${GITHUB_SHA::7}" --notes "$(git log -1 --format=%s)"
+              --title "Firmware ${GITHUB_SHA::7}" --notes "$(jq -r .subject dist/manifest.json)"
           fi

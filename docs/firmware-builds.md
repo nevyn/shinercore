@@ -31,7 +31,7 @@ OUTDIR as an asset:
   "schema": 1,
   "commit": "<40-char sha>",
   "date": "<commit date, ISO 8601>",
-  "subject": "<commit subject>",
+  "subject": "<commit subject; for a PR merge, the PR title>",
   "boards": [{
     "id": "atom-lite",
     "name": "M5Atom Lite",

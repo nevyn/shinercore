@@ -46,9 +46,12 @@ for entry in "${boards[@]}"; do
         "$(prop build.flash_size)" "$(prop upload.speed)" >> "$table"
 done
 
+subject=$(git -C "$repo" log -1 --format=%s)
+# A GitHub merge commit's subject names the branch; its body's first line is the PR title.
+[[ $subject == "Merge pull request "* ]] && subject=$(git -C "$repo" log -1 --format=%b | head -1)
+
 python3 -I - "$out" "$work" "$table" \
-    "$(git -C "$repo" rev-parse HEAD)" "$(git -C "$repo" log -1 --format=%cI)" \
-    "$(git -C "$repo" log -1 --format=%s)" <<'EOF'
+    "$(git -C "$repo" rev-parse HEAD)" "$(git -C "$repo" log -1 --format=%cI)" "$subject" <<'EOF'
 import hashlib, json, os, sys
 out, work, table, commit, date, subject = sys.argv[1:]
 ELF_SHA_OFFSET = 0xb0  # platform.txt: elf2image --elf-sha256-offset 0xb0
