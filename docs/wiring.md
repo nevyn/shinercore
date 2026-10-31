@@ -16,13 +16,16 @@ can be LEDs.
 | `atom-lite` | G21 G25 G22 G19 G23 G33 G26 G32 | G33 G32 | G26 G32 | G23, G33: `microphone` while `mic` is on |
 | `atom-echo` | G21 G25 G22 G19 G23 G33 G26 G32 | G32 | G26 G32 | G19, G22: `speaker`; G23, G33: `microphone` (always) |
 | `atoms3-lite` | G39 G38 G5 G6 G7 G8 G2 G1 | G5 G6 G7 G8 G2 G1 | G2 G1 | none |
+| `stickc-plus` | none | none | none | none |
 
-Grove cable colors: black G, red 5V, yellow G26 (S3: G2), white G32 (S3: G1).
+Grove cable colors: black G, red 5V, yellow G26 (S3: G2, StickC: G32), white G32 (S3: G1,
+StickC: G33). The `stickc-plus` has no wiring pins: its yellow and white wires always
+drive LEDs.
 
 ### The front button
 
 The button on the face of the case is wired in too, under its printed label: G39 on
-`atom-lite` and `atom-echo`, G41 on `atoms3-lite`. Its only role is button. It is not
+`atom-lite` and `atom-echo`, G41 on `atoms3-lite`, G37 on `stickc-plus`. Its only role is button. It is not
 in the status bit order, so `pinStatus` doesn't report it. When its key is absent from
 the wiring, it acts as `nextPreset`, so wiring stored before it was configurable keeps
 the old behavior. Holding it during boot still clears all settings, whatever its role.
