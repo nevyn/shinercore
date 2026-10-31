@@ -4,6 +4,7 @@
 #define kDescriptorPresentationFormat_String "19"
 
 #include "Codecs.h"
+#include "LayerSummary.h"
 
 // A setting, exposed over bluetooth as a string characteristic and persisted in
 // NVS as a string, but decoded into a typed field that business logic reads
@@ -34,7 +35,7 @@ public:
         chara.addDescriptor(formatDescriptor);
     }
     const char *uuid() { return chara.uuid(); }
-    void advertise(BLEService &onService) { onService.addCharacteristic(chara); }
+    virtual void advertise(BLEService &onService) { onService.addCharacteristic(chara); }
     void poll()
     {
         if(chara.written())
@@ -238,6 +239,48 @@ protected:
     virtual void handleWrite(const String &) {}
     String _staged;
     float _sinceStaged = kPinStatusInterval;
+};
+
+// The layer summary (docs/ble-comms.md): `layers` holds the text, which is too long
+// to notify, and this property's characteristic, `layersRevision`, notifies a counter
+// that changes with it. Never persisted.
+static const float kLayerSummaryInterval = 0.1;
+class LayerSummaryProperty : public Property
+{
+public:
+    LayerSummaryProperty(const char *revisionUuid, const char *summaryUuid)
+      : Property(revisionUuid, "layersRevision", BLERead | BLENotify, 20),
+        summary(summaryUuid, BLERead, kLayerSummaryMaxBytes),
+        summaryNameDescriptor(kDescriptorUserDesc, "layers")
+    {
+        summary.addDescriptor(summaryNameDescriptor);
+    }
+    virtual void advertise(BLEService &onService)
+    {
+        onService.addCharacteristic(summary);
+        Property::advertise(onService);
+    }
+    // Counts changes of the summary, wrapping at 65536.
+    uint16_t revision = 0;
+    // Formats the summary of what the strip plays at most every kLayerSummaryInterval
+    // (formatLayerSummary has the arguments); when it changed, stores it and stages
+    // the next revision for the flush limiter.
+    void offer(int preset, const ShinyLayerSettings *const layers[LAYER_COUNT], const bool gates[LAYER_COUNT], float delta)
+    {
+        if((_sinceOffer += delta) < kLayerSummaryInterval) return;
+        _sinceOffer = 0;
+        formatLayerSummary(_offered, preset, layers, gates);
+        if(strcmp(_offered.chars, _stored.chars) == 0) return;
+        _stored = _offered;
+        summary.writeValue(String(_stored.chars)); // no notify property, so no radio I/O
+        publish(String((int)++revision));
+    }
+protected:
+    virtual void handleWrite(const String &) {}
+    BLEStringCharacteristic summary;
+    BLEDescriptor summaryNameDescriptor;
+    LayerSummaryText _offered, _stored;
+    float _sinceOffer = kLayerSummaryInterval;
 };
 
 class LayerPropertyBase : public Property

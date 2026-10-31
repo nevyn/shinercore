@@ -236,6 +236,42 @@ int main() {
         expectInt("unchanged not staged", status.flushPublish() ? 1 : 0, 0);
     }
 
+    printf("layer summary stores on change only, at most every 100 ms, and bumps the revision\n");
+    {
+        LayerSummaryProperty summary("u5", "u6");
+        ShinyLayerSettings layers[LAYER_COUNT];
+        const ShinyLayerSettings *slots[LAYER_COUNT];
+        bool gates[LAYER_COUNT];
+        for(int i = 0; i < LAYER_COUNT; i++) { slots[i] = &layers[i]; gates[i] = true; }
+        layers[0].animationIndex = 1;
+
+        summary.offer(0, slots, gates, 0.016f);
+        expect("first offer stores", summary.summary.stored, "P 0\n0 1 0 ff6400 f0ff00 1 10 4 0 1");
+        expectInt("first offer staged", summary.flushPublish() ? 1 : 0, 1);
+        expect("revision 1", summary.chara.stored, "1");
+
+        gates[0] = false;
+        summary.offer(0, slots, gates, 0.016f);
+        expect("change too soon not stored", summary.summary.stored, "P 0\n0 1 0 ff6400 f0ff00 1 10 4 0 1");
+        expectInt("change too soon not staged", summary.flushPublish() ? 1 : 0, 0);
+        summary.offer(0, slots, gates, 0.1f);
+        expect("gate change stored once the interval passed", summary.summary.stored, "P 0\n0 1 0 ff6400 f0ff00 1 10 4 0 0");
+        summary.offer(kLayerSummaryMesh, slots, gates, 0.1f);
+        expectInt("only the settled revision is sent", summary.flushPublish() ? 1 : 0, 1);
+        expect("revision 3", summary.chara.stored, "3");
+        expectInt("one notify per staged revision", summary.chara.notifies, 2);
+
+        summary.offer(kLayerSummaryMesh, slots, gates, 0.2f);
+        expectInt("unchanged not staged", summary.flushPublish() ? 1 : 0, 0);
+        expectInt("unchanged keeps the revision", summary.revision, 3);
+
+        summary.revision = 65535;
+        gates[0] = true;
+        summary.offer(kLayerSummaryMesh, slots, gates, 0.1f);
+        summary.flushPublish();
+        expect("revision wraps", summary.chara.stored, "0");
+    }
+
     printf(failures ? "\n%d FAILURES\n" : "\nall passed\n", failures);
     return failures ? 1 : 0;
 }

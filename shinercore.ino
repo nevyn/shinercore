@@ -189,13 +189,15 @@ void applyDerivedState(TimeInterval dt)
 
     // own settings, or whichever preset the mesh carousel has on stage
     const ShinyLayerSettings *targets[LAYER_COUNT];
-    bool crossfade = false;
+    bool crossfade = false, ownPreset = true;
     for(int i = 0; i < LAYER_COUNT; i++)
     {
         targets[i] = mesh.carouselLayers(i);
         crossfade = crossfade || needsCrossfade(renderedLayers[i], *targets[i]);
+        ownPreset = ownPreset && targets[i] == &localPrefs.layers[i];
     }
     if(crossfade) startCrossfade();
+    layerSummaryProp.offer(ownPreset ? localPrefs.currentPresetIndex : kLayerSummaryMesh, targets, layerGate, dt);
 
     for(int i = 0; i < LAYER_COUNT; i++)
     {

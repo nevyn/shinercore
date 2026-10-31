@@ -50,6 +50,7 @@ GlobalProperty<String> meshGroupProp("12239682-6d25-45d1-a3b5-182dfa6cf106", "me
 GlobalProperty<int> carouselBeatsProp("1bc3f537-b285-4def-a2f9-285dae0b2aaa", "carouselBeats", &localPrefs.carouselBeats, 1, 64);
 WiringProperty wiringProp("2be57867-0fd5-45b7-93af-c9edff69fe60", "wiring", &localPrefs.wiring);
 PinStatusProperty pinStatusProp("53775889-c119-4673-89f2-359a80fabcca", "pinStatus");
+LayerSummaryProperty layerSummaryProp("9231bed4-aec8-4fa0-88be-3242e937fc0a", "a988b500-1b73-48e7-b353-9612e873af48");
 BLEStringCharacteristic wiringDocsChara("682bf183-44f6-4dc9-9eb0-640c05ae45db", BLERead, 512);
 BLEDescriptor wiringDocsNameDescriptor(kDescriptorUserDesc, "wiringDocs");
 
@@ -67,10 +68,11 @@ std::vector<GlobalPropertyBase*> globalProps = {&modeProp, &brightnessProp, &nam
 std::vector<LayerPropertyBase*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp, &beatSyncProp};
 std::vector<Property*> props = [&] {
     std::vector<Property*> v;
-    v.reserve(globalProps.size() + layerProps.size() + 1);
+    v.reserve(globalProps.size() + layerProps.size() + 2);
     v.insert(v.end(), globalProps.begin(), globalProps.end());
     v.insert(v.end(), layerProps.begin(), layerProps.end());
     v.push_back(&pinStatusProp);
+    v.push_back(&layerSummaryProp);
     return v;
 }();
 
