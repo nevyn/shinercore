@@ -6,9 +6,9 @@ import Foundation
 
 enum Fixture {
     /// Firmware marker bytes laid out as FirmwareMarker.h does.
-    static func marker(board: String, built: String) -> Data {
+    static func marker(board: String) -> Data {
         func field(_ text: String, _ size: Int) -> Data { Data(text.utf8) + Data(count: size - text.utf8.count) }
-        return field("ShinerCore/1", 16) + field(board, 16) + field(built, 24)
+        return field("ShinerCore/1", 16) + field(board, 16)
     }
 
     static func url(_ name: String) -> URL {

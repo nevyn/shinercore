@@ -83,7 +83,7 @@ void displayUpdate(M5GFX &display)
 void setup(void) {
     M5.begin();
     Serial.begin(115200);
-    Serial.printf("%s for %s, built %s\n", firmwareMarker.magic, firmwareMarker.board, firmwareMarker.built);
+    Serial.printf("%s for %s\n", firmwareMarker.magic, firmwareMarker.board);
 
     M5.update();
 

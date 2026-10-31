@@ -115,13 +115,9 @@ final class CoreSession: Identifiable {
         if let installed { return .installed(installed) }
         guard let identity else { return .check }
         guard let board, let build = selectedBuild else { return .chooseBoard }
-        switch identity.status {
-        case .known(let running, let runningBoard, _) where runningBoard.id == board.id:
+        if case .known(let running, let runningBoard, _) = identity.status, runningBoard.id == board.id {
             if running.id == build.id { return .upToDate }
             if running.date < build.date { return .update }
-        case .localBuild(_, let marker) where marker.board == board.id && isOlder(marker, than: build):
-            return .update
-        default: break
         }
         return .install
     }
@@ -138,9 +134,7 @@ final class CoreSession: Identifiable {
             case .unknown: return "Something else is installed"
             case .known(_, _, 0): return "ShinerCore, up to date"
             case .known: return "ShinerCore, update available"
-            case .localBuild(_, let marker):
-                if let latest = app.builds.first, isOlder(marker, than: latest) { return "ShinerCore, update available" }
-                return "ShinerCore, your own build"
+            case .localBuild: return "ShinerCore, your own build"
             }
         }
     }
@@ -246,11 +240,6 @@ final class CoreSession: Identifiable {
         core = .identified(identity)
         logger.info("\(self.device.path, privacy: .public): \(identity.chip.description, privacy: .public) \(identity.chip.mac, privacy: .public), \(self.summary, privacy: .public)")
         if let board = identity.status.boardID { app.memory.remember(board: board, forMAC: identity.chip.mac) }
-    }
-
-    /// A local build counts as older when it was compiled before `build`'s commit.
-    private func isOlder(_ marker: FirmwareMarker, than build: FirmwareBuild) -> Bool {
-        marker.built.map { $0 < build.date } ?? false
     }
 
     private func start(_ activity: Activity, _ body: @escaping (CoreSession) async -> Void) {

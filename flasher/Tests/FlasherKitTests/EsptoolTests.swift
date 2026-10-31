@@ -31,7 +31,7 @@ import Testing
 
     @Test func buildsTheIdentifyCommand() {
         #expect(EsptoolCommand.identify(port: "/dev/cu.x", output: URL(fileURLWithPath: "/tmp/f.bin"))
-                == ["--port", "/dev/cu.x", "--baud", "115200", "read-flash", "0x100b0", "168", "/tmp/f.bin"])
+                == ["--port", "/dev/cu.x", "--baud", "115200", "read-flash", "0x100b0", "144", "/tmp/f.bin"])
     }
 
     @Test func writesEveryPartAtItsOwnOffset() throws {
@@ -92,19 +92,15 @@ import Testing
     }
 
     @Test func readsTheFirmwareMarker() throws {
-        let marker = try #require(FirmwareMarker(bytes: Fixture.marker(board: "atom-echo", built: "Nov  1 2026 00:12:34")))
-        #expect(marker.board == "atom-echo")
-        let built = try #require(marker.built)
-        let parts = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: built)
-        #expect([parts.year, parts.month, parts.day, parts.hour, parts.minute, parts.second] == [2026, 11, 1, 0, 12, 34])
-        let read = try Data(contentsOf: Fixture.url("identify-read-local-build-s3.bin"))  // 168 bytes from an AtomS3 running a local build
+        #expect(FirmwareMarker(bytes: Fixture.marker(board: "atom-echo"))?.board == "atom-echo")
+        let read = try Data(contentsOf: Fixture.url("identify-read-local-build-s3.bin"))  // from an AtomS3 running a local build
         #expect(FirmwareMarker(bytes: read.dropFirst(EsptoolCommand.markerOffset))?.board == "atoms3-lite")
-        #expect(FirmwareMarker(bytes: Data(repeating: 0xff, count: 56)) == nil)
-        #expect(FirmwareMarker(bytes: Fixture.marker(board: "atom-echo", built: "Nov  1 2026 00:12:34").prefix(40)) == nil)
+        #expect(FirmwareMarker(bytes: Data(repeating: 0xff, count: 32)) == nil)
+        #expect(FirmwareMarker(bytes: Fixture.marker(board: "atom-echo").prefix(20)) == nil)
     }
 
     @Test func anUnlistedFingerprintWithAMarkerIsALocalBuild() throws {
-        let marker = FirmwareMarker(board: "atom-echo", built: nil)
+        let marker = FirmwareMarker(board: "atom-echo")
         #expect(FirmwareStatus(fingerprint: Data(repeating: 0x12, count: 32), marker: marker, builds: builds)
                 == .localBuild(fingerprint: String(repeating: "12", count: 32), marker: marker))
         let s3 = try #require(builds[0].board(id: "atoms3-lite"))
@@ -163,11 +159,11 @@ import Testing
 
     @Test func identifiesALocalBuildByItsMarker() async throws {
         let runner = ReplayRunner([.init(transcript: Fixture.text("identify-shinercore-s3.txt"), fingerprint: Data(repeating: 0x12, count: 32),
-                                         marker: Fixture.marker(board: "atoms3-lite", built: "Oct 30 2026 18:01:02"))])
+                                         marker: Fixture.marker(board: "atoms3-lite"))])
         let identity = try await CoreFlasher(runner: runner).identify(port: "/dev/cu.usbmodem1401", builds: builds)
         guard case .localBuild(_, let marker) = identity.status else { Issue.record("expected a local build, got \(identity.status)"); return }
         #expect(marker.board == "atoms3-lite")
-        #expect(runner.invocations.first?.suffix(3).dropLast() == ["0x100b0", "168"])
+        #expect(runner.invocations.first?.suffix(3).dropLast() == ["0x100b0", "144"])
     }
 
     @Test func identifyFailureNamesThePortAndKeepsTheOutput() async throws {

@@ -11,7 +11,7 @@ One term per concept. Use these in code, docs, the app and commits.
 * **fingerprint**: the ELF SHA-256 in a core's app image, which names the firmware build
   that it runs. Not "hash" or "version".
 * **firmware marker**: the `ShinerCore/1` record at flash `0x10120` that names a core's
-  board and compile time, so the flasher recognises ShinerCore without a fingerprint match.
+  board, so the flasher recognises ShinerCore without a fingerprint match.
 * **local build**: ShinerCore compiled outside CI (arduino-cli, the IDE). No firmware build
   lists its fingerprint. Not "dev build" or "custom build".
 * **flasher**: the Mac app in `flasher/` that flashes firmware builds onto cores. Not

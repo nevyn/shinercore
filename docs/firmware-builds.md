@@ -66,12 +66,12 @@ the IDF linker script places right after the 256-byte `esp_app_desc_t`: flash `0
 |---|---|---|
 | 0 | 16 | `ShinerCore/1`, NUL-padded; the number is the layout version |
 | 16 | 16 | the board id |
-| 32 | 24 | `__DATE__ " " __TIME__` (`Nov  1 2026 00:12:34`), the compiling machine's local time |
 
-The flasher reads `0x100b0` through the marker (168 bytes) in one `read-flash`. With a
-marker and no fingerprint match, it reports a local build, picks the marker's board, and
-offers an update when the local build was compiled before the chosen firmware build's
-commit. Builds from before the marker read as other firmware. `build-firmware.sh` checks
+The flasher reads `0x100b0` through the marker (144 bytes) in one `read-flash`. With a
+marker and no fingerprint match, it reports a local build and picks the marker's board.
+The marker carries no build time: arduino-cli reuses an unchanged file's object, so a
+`__DATE__` in it goes stale, and a local build's age can't be judged. Builds from before
+the marker read as other firmware. `build-firmware.sh` checks
 that each app image carries its marker. Nothing else may go in `.rodata_custom_desc`.
 
 ## Flashing preserves settings

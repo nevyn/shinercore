@@ -57,17 +57,13 @@ public struct CoreIdentity: Equatable, Sendable {
 /// (FirmwareMarker.h). Builds from before the marker don't have one.
 public struct FirmwareMarker: Equatable, Sendable {
     static let magic = "ShinerCore/1"
-    static let length = 56
+    static let length = 32
 
     /// The board id that the firmware was built for, as in manifests.
     public var board: String
-    /// When the firmware was compiled, in the compiling machine's local time, read as this Mac's
-    /// time zone; nil when the text doesn't parse.
-    public var built: Date?
 
-    public init(board: String, built: Date?) {
+    public init(board: String) {
         self.board = board
-        self.built = built
     }
 
     /// Nil unless `bytes` hold a marker of this layout version.
@@ -79,11 +75,6 @@ public struct FirmwareMarker: Equatable, Sendable {
         }
         guard field(0..<16) == Self.magic else { return nil }
         board = field(16..<32)
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "MMM d yyyy HH:mm:ss"
-        // __DATE__ pads a one-digit day with a space: "Nov  1 2026".
-        built = formatter.date(from: field(32..<56).replacingOccurrences(of: "  ", with: " "))
     }
 }
 

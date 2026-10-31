@@ -69,8 +69,6 @@ struct CoreDetailContent: View {
         case .known(let build, _, _) where session.idlePrimary == .update:
             return "ShinerCore from \(build.dayMonth) is installed. A newer one is ready."
         case .known: return "ShinerCore is installed and up to date."
-        case .localBuild(_, let marker) where session.idlePrimary == .update:
-            return "Your own ShinerCore build\(marker.built.map { " from \($0.formatted(.dateTime.day().month(.abbreviated)))" } ?? "") is installed. A newer one is ready."
         case .localBuild: return "Your own ShinerCore build is installed. Installing replaces it with the chosen firmware build."
         }
     }
@@ -200,7 +198,7 @@ struct CoreDetailContent: View {
                 fact("Fingerprint", identity.status.fingerprint ?? "none (empty)")
                 if case .known(let build, _, _) = identity.status { fact("Running", build.label(latest: false)) }
                 if case .localBuild(_, let marker) = identity.status {
-                    fact("Running", "own build for \(marker.board)\(marker.built.map { ", compiled \($0.formatted(date: .abbreviated, time: .shortened))" } ?? "")")
+                    fact("Running", "your own build for \(marker.board)")
                 }
             }
         }

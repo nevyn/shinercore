@@ -73,7 +73,7 @@ enum States {
         }
         add("detail-install", detail(.unknown(fingerprint: String(repeating: "12", count: 32))))
         add("detail-local-build", detail(.localBuild(fingerprint: String(repeating: "12", count: 32),
-                                                     marker: FirmwareMarker(board: "atoms3-lite", built: latest.date.addingTimeInterval(-86400)))))
+                                                     marker: FirmwareMarker(board: "atoms3-lite"))))
         add("detail-needs-board", detail(.noFirmware, chip: atomChip, port: atomPort))
         add("detail-update", detail(.known(build: builds[2], board: s3Board, buildsBehind: 2)))
         add("detail-up-to-date", detail(.known(build: latest, board: s3Board, buildsBehind: 0)))
@@ -173,17 +173,11 @@ enum States {
         #expect(memory.boards["4c:75:25:a1:b2:c3"] == "atom-echo")
     }
 
-    @Test func anOlderLocalBuildOffersAnUpdate() {
-        let older = FirmwareMarker(board: "atoms3-lite", built: States.latest.date.addingTimeInterval(-3600))
-        let (_, session) = States.detail(.localBuild(fingerprint: String(repeating: "12", count: 32), marker: older))
-        #expect(session.summary == "ShinerCore, update available")
-        #expect(session.primary == .update)
+    @Test func aLocalBuildIsShinerCoreOnItsOwnBoard() {
+        let (_, session) = States.detail(.localBuild(fingerprint: String(repeating: "12", count: 32), marker: FirmwareMarker(board: "atoms3-lite")))
+        #expect(session.summary == "ShinerCore, your own build")
+        #expect(session.primary == .install)
         #expect(session.boardSelection?.reason == .running)
-
-        let newer = FirmwareMarker(board: "atoms3-lite", built: States.latest.date.addingTimeInterval(3600))
-        let (_, own) = States.detail(.localBuild(fingerprint: String(repeating: "12", count: 32), marker: newer))
-        #expect(own.summary == "ShinerCore, your own build")
-        #expect(own.primary == .install)
     }
 
     @Test func primaryActionFollowsTheRunningBuild() {
