@@ -14,13 +14,19 @@ struct ShinerCoreFlasherApp: App {
 
     var body: some Scene {
         Window("ShinerCore Flasher", id: "main") {
-            ContentView(model: model)
+            RootView(model: model)
+                .frame(minWidth: 460, minHeight: 520)
                 .task {
                     model.refreshCatalog()
                     FlasherApp.monitor = SerialPortMonitor { [model] devices in model.devicesChanged(devices) }
                 }
         }
-        .windowResizability(.contentSize)
+        .defaultSize(width: 520, height: 680)
+        .commands {
+            CommandGroup(replacing: .help) {
+                Button("How ShinerCore Works") { model.showingHowItWorks = true }
+            }
+        }
     }
 }
 
