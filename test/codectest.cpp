@@ -2,8 +2,6 @@
 #include "FastLED.h"
 #include "../Codecs.h"
 
-std::vector<String> animationNames = {"Nothing", "Static", "Opposing Waves"};
-
 static int failures = 0;
 static void check(const char *what, bool ok) {
     if(!ok) failures++;

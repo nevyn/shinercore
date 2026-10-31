@@ -38,6 +38,8 @@ M5Unified/OverAnimate already does it → one line → minimum code that works.
   animation function — that's what makes layering compose and future mesh sync
   possible. Use the hash() helpers for randomness. (Fire2012 stayed dead for this
   reason; it needs per-layer state to come back.)
+* **`src/render/` is consumed by the Remote app** as a SwiftPM package: no Arduino
+  dependencies there, and its C API changes additively only (docs/rendering.md).
 * **Time never jumps.** Rates change, positions don't: settings ease or crossfade
   (docs/transitions.md),
   beat-synced layers chase by rate modulation, OverAnimate accumulates phase. If your

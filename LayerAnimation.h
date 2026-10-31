@@ -18,7 +18,4 @@ protected:
     void animate(float fraction);
 };
 
-typedef void(*AnimateLayerFunc)(LayerAnimation*, TimeInterval);
-
-
 #endif

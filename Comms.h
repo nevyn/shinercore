@@ -3,6 +3,8 @@ BLEService shinerService("6c0de004-629d-4717-bed5-847fddfbdc2e");
 // Documentation characteristic - returns JSON with available blend modes and animations
 BLEStringCharacteristic documentationChara("76db9199-21af-4207-a23c-dc138a6cd42d", BLERead, 512);
 BLEDescriptor documentationNameDescriptor(kDescriptorUserDesc, "documentation");
+BLEStringCharacteristic animationDocsChara("5a9ce2c0-4837-4bd4-825f-ae639fdccc31", BLERead, 512);
+BLEDescriptor animationDocsNameDescriptor(kDescriptorUserDesc, "animationDocs");
 
 String buildDocumentationJSON() {
     String json = "{\"blendModes\":[";
@@ -145,6 +147,9 @@ void commsSetup(void)
     documentationChara.addDescriptor(documentationNameDescriptor);
     shinerService.addCharacteristic(documentationChara);
     documentationChara.writeValue(buildDocumentationJSON());
+    animationDocsChara.addDescriptor(animationDocsNameDescriptor);
+    shinerService.addCharacteristic(animationDocsChara);
+    animationDocsChara.writeValue(animationDocsJSON());
     wiringDocsChara.addDescriptor(wiringDocsNameDescriptor);
     shinerService.addCharacteristic(wiringDocsChara);
     wiringDocsChara.writeValue(wiringDocsJSON(ACTIVE_BOARD));

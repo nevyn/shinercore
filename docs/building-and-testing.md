@@ -38,9 +38,13 @@ the cache — recompile the variant you're flashing right before `arduino-cli up
 ## Host tests
 
 `test/run.sh` compiles and runs the host-side tests (codecs, migration, properties,
-wiring) with clang, against the ArduinoJson in `~/Dev/Arduino/libraries`.
-They stub the Arduino surface via `test/stubs/FastLED.h`; pure logic only, no BLE or
-LED code. Keep them passing; extend them when you touch what they cover.
+wiring, rendering) with clang, against the ArduinoJson in `~/Dev/Arduino/libraries`.
+They stub the Arduino surface via `test/stubs/FastLED.h`; pure logic only, no BLE.
+`rendertest` checks the render library against golden frames ([rendering.md](rendering.md)).
+Keep them passing; extend them when you touch what they cover.
+
+`swift build --package-path .` builds the render library as the Remote app's SwiftPM
+package does. Run it after touching `src/render/` or `Package.swift`.
 
 ## Flashing and serial
 
@@ -71,10 +75,12 @@ isn't. A directory symlink gets resolved and rejected; symlink the *files* inste
 ```
 mkdir -p /tmp/meshbuild/shinercore
 for f in <worktree>/*.ino <worktree>/*.h <worktree>/*.cpp; do ln -s "$f" /tmp/meshbuild/shinercore/; done
+ln -s <worktree>/src /tmp/meshbuild/shinercore/src
 arduino-cli compile -b ... /tmp/meshbuild/shinercore
 ```
 
-Re-run the link loop after adding a new source file.
+A symlink to `src/` inside the sketch directory works; arduino-cli compiles it
+recursively. Re-run the file loop after adding a source file at the root.
 
 ## Debugging a hang: the core dump
 

@@ -3,6 +3,7 @@
 #include "FastLED.h"
 #include <vector>
 #include "Wiring.h"
+#include "src/render/Render.h"
 
 enum RunMode
 {
@@ -16,26 +17,12 @@ enum RunMode
 #define PRESET_COUNT 5
 #define MAX_LED_COUNT 800
 
-enum LayerBlendMode
-{
-    BlendModeAdd,
-    BlendModeSubtract,
-    BlendModeAddWrap,
-    BlendModeSubtractWrap,
-    BlendModeMultiply,
-    BlendModeDissolve,
-    BlendModeAverage,
-    BlendModeSet,
-    BlendModeScreen,
-    BlendModeLighten,
-    BlendModeDarken,
-    BlendModeDifference,
-    BlendModeOverlay,
-    BlendModeColorDodge,
-
-    BlendModeCount
-};
+// Derived from the render library's tables
 extern std::vector<String> blendModeNames;
+extern std::vector<String> animationNames;
+// The `animationDocs` characteristic's value (docs/ble-comms.md): each animation's
+// color use and parameter names, from the render library's table
+String animationDocsJSON();
 
 enum LedColorOrder
 {

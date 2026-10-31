@@ -84,3 +84,23 @@ to re-read it: `wiring` and `pinStatus` in [wiring.md](wiring.md).
   always is.
 * A cursor change (layer/preset) republishes all 8 per-layer characteristics, spread
   over ~½s by the flush limiter.
+
+## Read-only vocabularies
+
+A characteristic value holds at most 512 bytes: that is the ATT maximum attribute
+length in the Bluetooth core spec, not an ArduinoBLE setting, and Read Blob cannot
+read past it. A vocabulary that would outgrow 512 bytes therefore gets its own
+characteristic instead of a new key in an existing one. Changing the type of an
+existing key breaks older apps, which decode the whole value or nothing.
+
+* `documentation` (`76db9199-21af-4207-a23c-dc138a6cd42d`): the names that the
+  index-valued properties count into, as
+  `{"blendModes":[...],"animations":[...],"ledColorOrders":[...]}`.
+* `animationDocs` (`5a9ce2c0-4837-4bd4-825f-ae639fdccc31`): one entry per animation,
+  in the order of `documentation.animations`. An entry is `[colors]`,
+  `[colors,"tau name"]` or `[colors,"tau name","phi name"]`; `colors` is 0, 1 or 2,
+  how many of `color` and `color2` the animation reads, and `""` names a parameter
+  that the animation ignores. Example: `[[0],[1],...,[2,"Tail length","Head width"],...]`.
+  Built from the render library's animation table ([rendering.md](rendering.md)).
+  Cores without it predate it; the app then falls back to its own copy of the table.
+* `wiringDocs`: see [wiring.md](wiring.md).
