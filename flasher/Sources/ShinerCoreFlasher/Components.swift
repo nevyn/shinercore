@@ -168,7 +168,7 @@ extension BoardSelection {
     func caption(chosen: Bool) -> String {
         if chosen { return "Choose the model printed on the case." }
         switch reason {
-        case .fingerprint: return "Read from the ShinerCore that the core runs."
+        case .running: return "Read from the ShinerCore that the core runs."
         case .remembered: return "Remembered from the last time this core was plugged in."
         case .onlyBoardForChip: return "The only model with this chip."
         case .userMustChoose: return "Choose the model printed on the case."

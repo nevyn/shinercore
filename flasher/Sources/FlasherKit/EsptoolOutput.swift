@@ -8,11 +8,15 @@ public enum EsptoolCommand {
     /// Where the fingerprint lives: `esp_app_desc_t.app_elf_sha256` of the app image at `0x10000`.
     public static let fingerprintAddress = 0x100b0
     public static let fingerprintLength = 32
+    /// Where the firmware marker lives, relative to `fingerprintAddress`.
+    public static let markerOffset = 0x10120 - fingerprintAddress
+    /// What identifying reads: the fingerprint through the firmware marker.
+    public static let identifyLength = markerOffset + FirmwareMarker.length
 
-    /// Reads the fingerprint into `output`. Resets the core into its bootloader and back.
+    /// Reads the fingerprint and firmware marker into `output`. Resets the core into its bootloader and back.
     public static func identify(port: String, output: URL) -> [String] {
         ["--port", port, "--baud", String(safeBaud), "read-flash",
-         String(format: "0x%x", fingerprintAddress), String(fingerprintLength), output.path]
+         String(format: "0x%x", fingerprintAddress), String(identifyLength), output.path]
     }
 
     /// Writes `files` (one per part, in `board.parts` order) at the parts' offsets.
