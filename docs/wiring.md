@@ -191,6 +191,11 @@ the LED role restarts the core 0.3 s later, after flushing every pending persist
 then, the pins registered at boot stay FastLED's and a new LED pin stays untouched. The
 power cap (`maxCurrent`) splits evenly across the registered outputs.
 
+The power cap estimates one LED per pixel. A strip that forks into parallel branches
+lights several LEDs per pixel and draws that many times more, so set `maxCurrent` to
+the supply's current × pixels ÷ physical LEDs. With 608 pixels driving 1,500 LEDs on a
+20 A supply, that is 8,100 mA.
+
 FastLED 3.6's ESP32 RMT driver (`clockless_rmt_esp32.cpp`) has a start race that hangs
 `show()`, fixed in the nevyn/FastLED fork (building-and-testing.md). On an unpatched
 library, the strips must be registered before the builtin pixel; shinercore.ino keeps
