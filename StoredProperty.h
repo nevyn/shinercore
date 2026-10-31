@@ -286,45 +286,58 @@ protected:
     float _sinceStaged = kPinStatusInterval;
 };
 
-// The layer summary (docs/ble-comms.md): `layers` holds the text, which is too long
-// to notify, and this property's characteristic, `layersRevision`, notifies a counter
-// that changes with it. Never persisted.
+// The layer summary (docs/ble-comms.md): `layers` and `layerOpacities` hold the texts,
+// which are too long to notify, and this property's characteristic, `layersRevision`,
+// notifies a counter that changes with either. Never persisted.
 static const float kLayerSummaryInterval = 0.1;
 class LayerSummaryProperty : public Property
 {
 public:
-    LayerSummaryProperty(const char *revisionUuid, const char *summaryUuid)
+    LayerSummaryProperty(const char *revisionUuid, const char *summaryUuid, const char *opacitiesUuid)
       : Property(revisionUuid, "layersRevision", BLERead | BLENotify, 20),
         summary(summaryUuid, BLERead, kLayerSummaryMaxBytes),
-        summaryNameDescriptor(kDescriptorUserDesc, "layers")
+        summaryNameDescriptor(kDescriptorUserDesc, "layers"),
+        opacities(opacitiesUuid, BLERead, kLayerOpacitiesMaxBytes),
+        opacitiesNameDescriptor(kDescriptorUserDesc, "layerOpacities")
     {
         summary.addDescriptor(summaryNameDescriptor);
+        opacities.addDescriptor(opacitiesNameDescriptor);
     }
     virtual void advertise(BLEService &onService)
     {
         onService.addCharacteristic(summary);
+        onService.addCharacteristic(opacities);
         Property::advertise(onService);
     }
-    // Counts changes of the summary, wrapping at 65536.
+    // Counts changes of the summary and the opacities, wrapping at 65536.
     uint16_t revision = 0;
-    // Formats the summary of what the strip plays at most every kLayerSummaryInterval
-    // (formatLayerSummary has the arguments); when it changed, stores it and stages
-    // the next revision for the flush limiter.
+    // Formats both texts for what the strip plays at most every kLayerSummaryInterval
+    // (formatLayerSummary has the arguments); stores each text that changed, and when
+    // either did, stages the next revision for the flush limiter.
     void offer(int preset, const ShinyLayerSettings *const layers[LAYER_COUNT], const bool gates[LAYER_COUNT], float delta)
     {
         if((_sinceOffer += delta) < kLayerSummaryInterval) return;
         _sinceOffer = 0;
         formatLayerSummary(_offered, preset, layers, gates);
-        if(strcmp(_offered.chars, _stored.chars) == 0) return;
-        _stored = _offered;
-        summary.writeValue(String(_stored.chars)); // no notify property, so no radio I/O
-        publish(String((int)++revision));
+        bool changed = storeChanged(summary, _stored);
+        formatLayerOpacities(_offered, layers);
+        changed = storeChanged(opacities, _storedOpacities) || changed;
+        if(changed) publish(String((int)++revision));
     }
 protected:
     virtual void handleWrite(const String &) {}
+    bool storeChanged(BLEStringCharacteristic &chara, LayerSummaryText &stored)
+    {
+        if(strcmp(_offered.chars, stored.chars) == 0) return false;
+        stored = _offered;
+        chara.writeValue(String(stored.chars)); // no notify property, so no radio I/O
+        return true;
+    }
     BLEStringCharacteristic summary;
     BLEDescriptor summaryNameDescriptor;
-    LayerSummaryText _offered, _stored;
+    BLEStringCharacteristic opacities;
+    BLEDescriptor opacitiesNameDescriptor;
+    LayerSummaryText _offered, _stored, _storedOpacities;
     float _sinceOffer = kLayerSummaryInterval;
 };
 

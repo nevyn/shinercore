@@ -1,9 +1,10 @@
-// Host tests for MeshLogic.h: frame layouts, leader ranking, carousel slots.
+// Host tests for MeshLogic.h: frame layouts, layer encoding, leader ranking, carousel slots.
 #include "FastLED.h"
 #include "../ShinyTypes.h"
 #include "../MeshLogic.h"
 #include <cstdio>
 #include <cstddef>
+#include <cmath>
 
 static int failures = 0;
 static void check(const char *what, bool ok) {
@@ -19,11 +20,45 @@ int main() {
     check("beat frame fits", sizeof(MeshBeatFrame) <= 250);
     check("beat frame is packed", sizeof(MeshBeatFrame) == 2 + 4 + 1 + 4 + 4 + 8 + 4 + 3 + 6);
     check("full preset frame fits ESP-NOW", sizeof(MeshPresetFrame) <= 250);
-    check("preset layer is packed", sizeof(MeshPresetLayer) == 4 + 3 + 3 + 12);
+    check("preset layer is packed", sizeof(MeshPresetLayer) == 4 + 3 + 3 + 12 + 1);
     check("beat frame starts with the common header",
           offsetof(MeshBeatFrame, groupHash) == offsetof(MeshFrameHeader, groupHash));
     check("preset frame starts with the common header",
           offsetof(MeshPresetFrame, groupHash) == offsetof(MeshFrameHeader, groupHash));
+
+    printf("preset layer round trip\n");
+    {
+        ShinyLayerSettings l;
+        l.animationIndex = 5; l.blendMode = BlendModeScreen; l.beatSync = 1;
+        l.mainColor = CRGB(1, 2, 3); l.secondaryColor = CRGB(4, 5, 6);
+        l.speed = 2.5f; l.p_tau = -12; l.p_phi = 0.25f;
+        MeshPresetLayer wire;
+        ShinyLayerSettings back;
+        meshEncodeLayer(7, l, wire);
+        meshDecodeLayer(wire, back);
+        check("layer index travels", wire.layer == 7);
+        check("every other field travels", back.animationIndex == 5 && back.blendMode == BlendModeScreen
+              && back.beatSync == 1 && back.mainColor == CRGB(1, 2, 3) && back.secondaryColor == CRGB(4, 5, 6)
+              && back.speed == 2.5f && back.p_tau == -12 && back.p_phi == 0.25f);
+        const float opacities[] = {0, 0.5f, 1};
+        bool opacityOk = true;
+        for(float o : opacities) {
+            l.opacity = o;
+            meshEncodeLayer(0, l, wire);
+            meshDecodeLayer(wire, back);
+            if(fabsf(back.opacity - o) > 1 / 255.0f) opacityOk = false;
+        }
+        check("opacity 0, 0.5, 1 travel within 1/255", opacityOk);
+        l.opacity = 0.5f; meshEncodeLayer(0, l, wire);
+        check("0.5 encodes as 128", wire.opacity == 128);
+        l.opacity = 1; meshEncodeLayer(0, l, wire); meshDecodeLayer(wire, back);
+        check("1 lands exactly", back.opacity == 1.0f);
+        l.opacity = 0; meshEncodeLayer(0, l, wire); meshDecodeLayer(wire, back);
+        check("0 lands exactly", back.opacity == 0.0f);
+        wire.animation = 200; wire.blendMode = 200; wire.speed = NAN;
+        meshDecodeLayer(wire, back);
+        check("hostile values clamp", back.animationIndex == 0 && back.blendMode == BlendModeAdd && back.speed == 1.0f);
+    }
 
     printf("group hash\n");
     check("empty group is the FNV basis", meshGroupHash("") == 2166136261u);

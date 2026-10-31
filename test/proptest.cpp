@@ -167,6 +167,29 @@ int main() {
         expect("echo corrects the store", f.brightness.chara.stored, "40");
     }
 
+    printf("opacity takes 0-1, clamps the rest, and keys fit NVS\n");
+    {
+        localPrefs = ShinySettings();
+        prefs = Prefs();
+        LayerProperty<float> opacity{"o", "opacity", &ShinyLayerSettings::opacity, 0.0f, 1.0f};
+        auto write = [&](const char *wire) {
+            opacity.chara.incoming = wire; opacity.chara._written = true;
+            opacity.poll();
+            return localPrefs.layers[0].opacity;
+        };
+        expectInt("default is 1", localPrefs.layers[0].opacity == 1.0f, 1);
+        expectInt("0.5 lands", write("0.5") == 0.5f, 1);
+        expectInt("above 1 clamps to 1", write("2") == 1.0f, 1);
+        expectInt("below 0 clamps to 0", write("-0.5") == 0.0f, 1);
+        expectInt("garbage keeps the value", write("banana") == 0.0f, 1);
+        settle(opacity, 1.0f);
+        expect("stored", nvs("opacity-0"), "0.000");
+        write("1");
+        settle(opacity, 1.0f);
+        expect("default stored as absence", nvs("opacity-0"), "<absent>");
+        expectInt("longest key fits 15 chars", layerKey("opacity", LAYER_COUNT - 1, PRESET_COUNT - 1).length() <= 15, 1);
+    }
+
     printf("empty write resets to the default\n");
     {
         localPrefs = ShinySettings();
@@ -244,7 +267,7 @@ int main() {
 
     printf("layer summary stores on change only, at most every 100 ms, and bumps the revision\n");
     {
-        LayerSummaryProperty summary("u5", "u6");
+        LayerSummaryProperty summary("u5", "u6", "u8");
         ShinyLayerSettings layers[LAYER_COUNT];
         const ShinyLayerSettings *slots[LAYER_COUNT];
         bool gates[LAYER_COUNT];
@@ -270,6 +293,17 @@ int main() {
         summary.offer(kLayerSummaryMesh, slots, gates, 0.2f);
         expectInt("unchanged not staged", summary.flushPublish() ? 1 : 0, 0);
         expectInt("unchanged keeps the revision", summary.revision, 3);
+
+        expect("first offer stores the opacities", summary.opacities.stored, "1 1 1 1 1 1 1 1 1 1");
+        layers[3].opacity = 0.5f;
+        summary.offer(kLayerSummaryMesh, slots, gates, 0.1f);
+        expect("opacity change stored", summary.opacities.stored, "1 1 1 0.5 1 1 1 1 1 1");
+        expectInt("opacity change alone bumps the revision", summary.revision, 4);
+        layers[3].opacity = 1;
+        layers[0].animationIndex = 2;
+        summary.offer(kLayerSummaryMesh, slots, gates, 0.1f);
+        expectInt("both changing bumps it once", summary.revision, 5);
+        summary.flushPublish();
 
         summary.revision = 65535;
         gates[0] = true;
@@ -313,7 +347,8 @@ int main() {
         LayerProperty<LayerBlendMode> blendMode{"b", "blendMode", &ShinyLayerSettings::blendMode};
         LayerProperty<int, AnimationCodec> animation{"a", "animation", &ShinyLayerSettings::animationIndex};
         LayerProperty<int> beatSync{"bs", "beatSync", &ShinyLayerSettings::beatSync, 0, 1};
-        std::vector<LayerPropertyBase*> layerProps = {&speed, &color, &color2, &tau, &phi, &animation, &blendMode, &beatSync};
+        LayerProperty<float> opacity{"o", "opacity", &ShinyLayerSettings::opacity, 0.0f, 1.0f};
+        std::vector<LayerPropertyBase*> layerProps = {&speed, &color, &color2, &tau, &phi, &animation, &blendMode, &beatSync, &opacity};
         std::vector<Property*> props(layerProps.begin(), layerProps.end());
         auto pendingCount = [&] { size_t n = 0; for(auto p: props) n += p->_pending.size(); return n; };
 
@@ -329,6 +364,7 @@ int main() {
             l.p_tau = -i - 0.25f;
             l.p_phi = i * 2 + 0.125f;
             l.beatSync = i % 2;
+            l.opacity = i / 10.0f;
         }
         for(auto p: layerProps) p->persistChanged(defaults);
         for(auto p: props) p->flushPersist();
@@ -340,7 +376,7 @@ int main() {
         ShinyLayerSettings moved[LAYER_COUNT];
         std::copy(localPrefs.layers, localPrefs.layers + LAYER_COUNT, moved);
         for(auto p: layerProps) p->persistChanged(before);
-        expectInt("every field of every layer pending", pendingCount(), 8 * LAYER_COUNT);
+        expectInt("every field of every layer pending", pendingCount(), 9 * LAYER_COUNT);
         expectInt("nothing written synchronously", prefs.writeCount, 0);
 
         size_t next = 0;
@@ -356,7 +392,7 @@ int main() {
         }
         printf("  at 60 fps: %d frames until every write landed, %d of them writing\n", frames, writingFrames);
         expectInt("at most one NVS write per frame", maxWritesPerFrame, 1);
-        expectInt("one write per changed field", prefs.writeCount, 8 * LAYER_COUNT);
+        expectInt("one write per changed field", prefs.writeCount, 9 * LAYER_COUNT);
 
         for(int i = 0; i < LAYER_COUNT; i++) localPrefs.layers[i] = ShinyLayerSettings();
         for(auto p: layerProps) for(int i = 0; i < LAYER_COUNT; i++) p->load(i, 3);
@@ -365,7 +401,7 @@ int main() {
             const ShinyLayerSettings &a = localPrefs.layers[i], &b = moved[i];
             same = same && a.animationIndex == b.animationIndex && a.blendMode == b.blendMode
                 && a.mainColor == b.mainColor && a.secondaryColor == b.secondaryColor && a.speed == b.speed
-                && a.p_tau == b.p_tau && a.p_phi == b.p_phi && a.beatSync == b.beatSync;
+                && a.p_tau == b.p_tau && a.p_phi == b.p_phi && a.beatSync == b.beatSync && a.opacity == b.opacity;
         }
         expectInt("reloading the preset from NVS gives the moved layers", same, 1);
     }

@@ -59,8 +59,9 @@ enum { AnimationCount = 14 };
 extern const AnimationInfo kAnimations[];
 
 /// One layer's step of a frame: renders animation `animation` into `scratch`, then
-/// blends that into `frame` with `blendMode` (a LayerBlendMode), mixed in at `gain`
-/// (0-1). Both buffers hold `count` pixels. Does nothing for animation 0 (Nothing) or
+/// blends that into `frame` with `blendMode` (a LayerBlendMode), mixed in at `gain`:
+/// how strongly the layer mixes in, 0-1. The firmware passes the layer gate's fade
+/// times the layer's opacity. Both buffers hold `count` pixels. Does nothing for animation 0 (Nothing) or
 /// gain 0; any other out-of-range animation renders black, which still blends. An
 /// out-of-range blend mode blends as Add.
 void compositeLayer(CRGB *frame, CRGB *scratch, int count, int animation, int blendMode,

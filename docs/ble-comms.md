@@ -87,7 +87,7 @@ to re-read it: `wiring` and `pinStatus` in [wiring.md](wiring.md).
   canonical echo is delayed (≤ ~50ms + queue position).
 * Only-latest: intermediate drag values may never be notified; the settled value
   always is.
-* A cursor change (layer/preset) republishes all 8 per-layer characteristics, spread
+* A cursor change (layer/preset) republishes all 9 per-layer characteristics, spread
   over ~½s by the flush limiter.
 
 ## Read-only vocabularies
@@ -109,6 +109,16 @@ existing key breaks older apps, which decode the whole value or nothing.
   Built from the render library's animation table ([rendering.md](rendering.md)).
   Cores without it predate it; the app then falls back to its own copy of the table.
 * `wiringDocs`: see [wiring.md](wiring.md).
+
+## Layer opacity
+
+`opacity` (`721da9f2-34da-4da2-bb64-0de65be811db`, read, write, notify) is a per-layer
+setting like `speed`: the cursor addresses it, and its value is decimal float text.
+It is how strongly the layer composites onto the layers below it, for every blend
+mode: 0 hides the layer, 1 (the default) blends it in fully. A write outside 0-1 is
+clamped, like every ranged property. NVS key `opacity-<layer>[-<preset>]`. The
+firmware composites a layer at its layer gate's fade times its opacity
+([rendering.md](rendering.md)).
 
 ## The layer summary
 
@@ -137,12 +147,22 @@ whole stack, so the app can list every layer and preview the composite.
   does no radio I/O on update. It reconciles rather than tracking triggers: every
   100 ms it formats what the strip plays (`applyDerivedState`, from the carousel's
   targets and the layer gates) and publishes only a changed text.
+* `layerOpacities` (`4f577ef4-d444-4b85-93a0-4b6a4d4c0e49`, read): the opacity of every
+  layer slot of what the strip plays now (the same source as `layers`), as exactly ten
+  floats separated by single spaces, slot 0 first, in the `layers` float format. Slots
+  whose animation is Nothing have a value too. Example: `1 0.3 1 1 1 1 1 1 1 1`. Like
+  `layers`, it holds the settled targets, is stored synchronously and is formatted in
+  the same 100 ms reconcile. It is a characteristic of its own because `layers` cannot
+  take an eleventh field: shipped apps require exactly ten fields per line, and ten
+  worst-case layers already use 493 of the 512 bytes. Cores without it predate
+  opacity; the app then treats every layer as 1.
 * `layersRevision` (`9231bed4-aec8-4fa0-88be-3242e937fc0a`, read, notify): a decimal
-  counter (0-65535, wrapping). It changes whenever `layers` would read differently:
-  a layer edit from BLE, a knob or the mesh, a preset change, a layer move, a layer
-  gate opening or closing, and a carousel slot change. Changes coalesce: at most one
+  counter (0-65535, wrapping). It changes whenever `layers` or `layerOpacities` would
+  read differently: a layer edit from BLE, a knob or the mesh, a preset change, a layer
+  move, a layer gate opening or closing, and a carousel slot change. A reconcile that
+  changes both texts changes the counter once. Changes coalesce: at most one
   notification per 100 ms, and the settled state is always notified. The app re-reads
-  `layers` when the counter changes.
+  `layers` and `layerOpacities` when the counter changes.
 * `layerMove` (`df64df61-5728-4e42-809f-bb7735fb30a0`, write): `FROM TO`, two layer
   indices 0-9. Moves layer FROM of the current preset to index TO, shifting the
   layers in between (remove, then insert). The move is one edit: it persists, reaches

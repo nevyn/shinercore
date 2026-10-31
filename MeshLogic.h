@@ -3,11 +3,12 @@
 #include <string.h>
 #include <stdint.h>
 #include "ShinyTypes.h"
+#include "Codecs.h"
 
 // The pure half of the mesh: wire formats and decision math, no radio.
 // Host-tested in test/meshtest.cpp; Mesh.h owns everything with side effects.
 
-#define kMeshVersion 3
+#define kMeshVersion 4
 #define kMeshFlagHasMic 1
 #define kMeshFlagConfident 2
 #define kMeshFlagFollowing 4 // this grid is itself relayed from a leader
@@ -77,6 +78,7 @@ struct __attribute__((packed)) MeshPresetLayer
     float speed;
     float tau;
     float phi;
+    uint8_t opacity;    // 0-255 for 0-1
 };
 
 struct __attribute__((packed)) MeshPresetFrame
@@ -87,6 +89,35 @@ struct __attribute__((packed)) MeshPresetFrame
     uint8_t layerCount;
     MeshPresetLayer layers[LAYER_COUNT]; // only layerCount are sent
 };
+
+static inline void meshEncodeLayer(int layer, const ShinyLayerSettings &l, MeshPresetLayer &out)
+{
+    out.layer = layer;
+    out.animation = l.animationIndex;
+    out.blendMode = l.blendMode;
+    out.beatSync = l.beatSync;
+    out.color1[0] = l.mainColor.r; out.color1[1] = l.mainColor.g; out.color1[2] = l.mainColor.b;
+    out.color2[0] = l.secondaryColor.r; out.color2[1] = l.secondaryColor.g; out.color2[2] = l.secondaryColor.b;
+    out.speed = l.speed;
+    out.tau = l.p_tau;
+    out.phi = l.p_phi;
+    out.opacity = (uint8_t)roundf(clampTo(l.opacity, 0.0f, 1.0f) * 255);
+}
+
+// Decodes with hostile-input clamps: anyone can broadcast ESP-NOW frames. The caller
+// checks in.layer.
+static inline void meshDecodeLayer(const MeshPresetLayer &in, ShinyLayerSettings &l)
+{
+    l.animationIndex = in.animation < (int)animationNames.size() ? in.animation : 0;
+    l.blendMode = in.blendMode < BlendModeCount ? (LayerBlendMode)in.blendMode : BlendModeAdd;
+    l.beatSync = in.beatSync ? 1 : 0;
+    l.mainColor = CRGB(in.color1[0], in.color1[1], in.color1[2]);
+    l.secondaryColor = CRGB(in.color2[0], in.color2[1], in.color2[2]);
+    l.speed = isfinite(in.speed) ? clampTo(in.speed, 0.001f, 100.0f) : 1.0f;
+    l.p_tau = isfinite(in.tau) ? clampTo(in.tau, -100.0f, 100.0f) : 10.0f;
+    l.p_phi = isfinite(in.phi) ? clampTo(in.phi, -100.0f, 100.0f) : 4.0f;
+    l.opacity = in.opacity / 255.0f;
+}
 
 struct MeshRank
 {

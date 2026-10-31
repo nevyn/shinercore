@@ -52,7 +52,7 @@ GlobalProperty<int> carouselBeatsProp("1bc3f537-b285-4def-a2f9-285dae0b2aaa", "c
 WiringProperty wiringProp("2be57867-0fd5-45b7-93af-c9edff69fe60", "wiring", &localPrefs.wiring);
 PinStatusProperty pinStatusProp("53775889-c119-4673-89f2-359a80fabcca", "pinStatus");
 LayerMoveProperty layerMoveProp("df64df61-5728-4e42-809f-bb7735fb30a0", "layerMove", applyLayerMove);
-LayerSummaryProperty layerSummaryProp("9231bed4-aec8-4fa0-88be-3242e937fc0a", "a988b500-1b73-48e7-b353-9612e873af48");
+LayerSummaryProperty layerSummaryProp("9231bed4-aec8-4fa0-88be-3242e937fc0a", "a988b500-1b73-48e7-b353-9612e873af48", "4f577ef4-d444-4b85-93a0-4b6a4d4c0e49");
 BLEStringCharacteristic wiringDocsChara("682bf183-44f6-4dc9-9eb0-640c05ae45db", BLERead, 512);
 BLEDescriptor wiringDocsNameDescriptor(kDescriptorUserDesc, "wiringDocs");
 
@@ -65,9 +65,10 @@ LayerProperty<float> phiProp("df6f0905-09bd-4bf6-b6f5-45b5a4d20d52", "phi", &Shi
 LayerProperty<LayerBlendMode> blendModeProp("03686c5c-6e6f-44f0-943f-db6388d9fdd4", "blendMode", &ShinyLayerSettings::blendMode);
 LayerProperty<int, AnimationCodec> animationProp("bee29c30-aa11-45b2-b5a2-8ff8d0bab262", "animation", &ShinyLayerSettings::animationIndex);
 LayerProperty<int> beatSyncProp("6f97efc2-096e-4704-9feb-f9c2f41577ee", "beatSync", &ShinyLayerSettings::beatSync, 0, 1);
+LayerProperty<float> opacityProp("721da9f2-34da-4da2-bb64-0de65be811db", "opacity", &ShinyLayerSettings::opacity, 0.0f, 1.0f);
 
 std::vector<GlobalPropertyBase*> globalProps = {&modeProp, &brightnessProp, &nameProp, &layerProp, &presetProp, &bootPresetProp, &ledColorOrderProp, &ledCountProp, &maxCurrentProp, &micProp, &meshProp, &meshShowProp, &meshGroupProp, &carouselBeatsProp, &wiringProp};
-std::vector<LayerPropertyBase*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp, &beatSyncProp};
+std::vector<LayerPropertyBase*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp, &beatSyncProp, &opacityProp};
 std::vector<Property*> props = [&] {
     std::vector<Property*> v;
     v.reserve(globalProps.size() + layerProps.size() + 3);
