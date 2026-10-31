@@ -25,6 +25,7 @@ rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources/esptool"
 cp "$bin" "$app/Contents/MacOS/ShinerCoreFlasher"
 sed "s/VERSION/$version/g" app/Info.plist > "$app/Contents/Info.plist"
+cp app/AppIcon.icns "$app/Contents/Resources/"  # scripts/make-icon.swift draws it
 plutil -lint -s "$app/Contents/Info.plist" app/esptool.entitlements
 
 # Each tarball is verified, then extracted into its own empty directory; only esptool and LICENSE leave it.
