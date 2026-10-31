@@ -104,6 +104,18 @@ int main(int argc, char **argv)
         check("names in wire order", ok);
     }
 
+    printf("animationDocs\n");
+    {
+        String json = animationDocsJSON();
+        const char *want = "[[0],[1],[2,\"Wave length\",\"Counter-wave length\"],[1,\"Wave length\",\"Phase\"],[2],"
+            "[0,\"Rainbows\",\"Drift speed\"],[2,\"Tail length\",\"Head width\"],[2,\"Width\",\"Glow\"],"
+            "[2,\"Density\",\"Twinkle speed\"],[2,\"Spacing\",\"Group size\"],[2,\"Wipe time\"],"
+            "[2,\"Sharpness\",\"Repeats\"],[2,\"Flash length\",\"Density\"],[1]]";
+        if(json != want) printf("    got %s\n", json.c_str());
+        check("the table, as specified", json == want);
+        check("fits a characteristic (512 bytes)", json.length() <= 512);
+    }
+
     printf("golden frames (firmware path)\n");
     {
         int matched = 0, total = sizeof kGoldenFrames / sizeof *kGoldenFrames;

@@ -20,6 +20,9 @@ enum RunMode
 // Derived from the render library's tables
 extern std::vector<String> blendModeNames;
 extern std::vector<String> animationNames;
+// The `animationDocs` characteristic's value (docs/ble-comms.md): each animation's
+// color use and parameter names, from the render library's table
+String animationDocsJSON();
 
 enum LedColorOrder
 {
