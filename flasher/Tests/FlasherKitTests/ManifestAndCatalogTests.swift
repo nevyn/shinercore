@@ -34,7 +34,7 @@ import Testing
          "assets": assets.map { ["name": $0, "browser_download_url": asset.appending(path: "\(tag)/\($0)").absoluteString] }]
     }
 
-    func http(flasherTags: [(String, Bool)] = []) throws -> FakeHTTP {
+    func http(latestRelease: [String: Any]? = nil) throws -> FakeHTTP {
         let latestFiles = ["manifest.json"] + latest.boards.flatMap { $0.parts.map(\.file) }
         var releases: [[String: Any]] = [
             release("firmware-aaaaaaa", assets: ["manifest.json"]),
@@ -42,13 +42,14 @@ import Testing
             release("firmware-broken", assets: ["manifest.json"]),
             release("firmware-drafty", draft: true, assets: ["manifest.json"]),
         ]
-        releases += flasherTags.map { release($0.0, prerelease: $0.1) }
+        releases += [release("flasher-v9.0.0", prerelease: false)]  // only /releases/latest decides
         let http = FakeHTTP([
             GitHubCatalog.releasesURL: try JSONSerialization.data(withJSONObject: releases),
             asset.appending(path: "firmware-aaaaaaa/manifest.json"): try JSONEncoder.manifest.encode(older),
             asset.appending(path: "firmware-1ac850e/manifest.json"): try JSONEncoder.manifest.encode(latest),
             asset.appending(path: "firmware-broken/manifest.json"): Data("{\"schema\": 1}".utf8),
         ])
+        if let latestRelease { http.set(GitHubCatalog.latestReleaseURL, try JSONSerialization.data(withJSONObject: latestRelease)) }
         for (file, data) in Fixture.syntheticBuild.files {
             http.set(asset.appending(path: "firmware-1ac850e/\(file)"), data)
         }
@@ -64,13 +65,23 @@ import Testing
         #expect(snapshot.flasherUpdate == nil)
     }
 
-    @Test func offersTheNewestFullFlasherReleaseNewerThanTheRunningOne() async throws {
-        let tags = [("flasher-v0.2.0", false), ("flasher-v0.10.0", false), ("flasher-v0.11.0", true), ("flasher-vbogus", false)]
-        let older = await GitHubCatalog(http: try http(flasherTags: tags), cacheDirectory: temporaryDirectory(), currentVersion: "0.1.0").refresh()
+    @Test func offersTheLatestFlasherReleaseWhenItIsNewer() async throws {
+        let latest = release("flasher-v0.10.0", prerelease: false)
+        let older = await GitHubCatalog(http: try http(latestRelease: latest), cacheDirectory: temporaryDirectory(), currentVersion: "0.9.1").refresh()
         #expect(older.flasherUpdate?.version == "0.10.0")
         #expect(older.flasherUpdate?.page.absoluteString == "https://github.com/nevyn/shinercore/releases/tag/flasher-v0.10.0")
-        let current = await GitHubCatalog(http: try http(flasherTags: tags), cacheDirectory: temporaryDirectory(), currentVersion: "0.10.0").refresh()
+        let current = await GitHubCatalog(http: try http(latestRelease: latest), cacheDirectory: temporaryDirectory(), currentVersion: "0.10.0").refresh()
         #expect(current.flasherUpdate == nil)
+        let firmware = await GitHubCatalog(http: try http(latestRelease: release("firmware-1ac850e", prerelease: false)),
+                                           cacheDirectory: temporaryDirectory(), currentVersion: "0.1.0").refresh()
+        #expect(firmware.flasherUpdate == nil)
+    }
+
+    @Test func aMissingLatestReleaseOnlyHidesTheBanner() async throws {
+        let snapshot = await GitHubCatalog(http: try http(), cacheDirectory: temporaryDirectory(), currentVersion: "0.1.0").refresh()
+        #expect(snapshot.flasherUpdate == nil)
+        #expect(snapshot.builds.count == 2)
+        guard case .online = snapshot.freshness else { Issue.record("expected online"); return }
     }
 
     @Test func fallsBackToTheCacheWhenOfflineAndReusesCachedManifests() async throws {

@@ -85,6 +85,8 @@ func sha256Hex(of file: URL) -> String? {
 /// and `builds/<commit>/<file>` (flash pieces).
 public struct GitHubCatalog: FirmwareSource {
     public static let releasesURL = URL(string: "https://api.github.com/repos/nevyn/shinercore/releases?per_page=100")!
+    /// The newest full release, which is always a flasher release: firmware builds are prereleases.
+    public static let latestReleaseURL = URL(string: "https://api.github.com/repos/nevyn/shinercore/releases/latest")!
 
     let http: HTTPClient
     let cacheDirectory: URL
@@ -121,7 +123,7 @@ public struct GitHubCatalog: FirmwareSource {
             let checkedAt = now()
             try? saveCache(Cache(checkedAt: checkedAt, entries: entries))
             return CatalogSnapshot(builds: entries.map(\.build), freshness: .online(checkedAt: checkedAt),
-                                   flasherUpdate: newestFlasher(in: releases))
+                                   flasherUpdate: await newerFlasher())
         } catch {
             return CatalogSnapshot(builds: cached?.entries.map(\.build) ?? [],
                                    freshness: .offline(cachedAt: cached?.checkedAt, reason: error.localizedDescription))
@@ -151,16 +153,15 @@ public struct GitHubCatalog: FirmwareSource {
         return files
     }
 
-    private func newestFlasher(in releases: [GitHubRelease]) -> FlasherRelease? {
-        let current = SemanticVersion(currentVersion) ?? SemanticVersion(0, 0, 0)
-        return releases
-            .filter { !$0.prerelease && !$0.draft && $0.tag_name.hasPrefix("flasher-v") }
-            .compactMap { release in
-                SemanticVersion(String(release.tag_name.dropFirst("flasher-v".count))).map { ($0, release) }
-            }
-            .filter { $0.0 > current }
-            .max { $0.0 < $1.0 }
-            .map { FlasherRelease(version: $0.0.description, page: $0.1.html_url) }
+    /// The latest flasher release if it is newer than the running one. A missing or unreadable
+    /// latest release just means no update banner.
+    private func newerFlasher() async -> FlasherRelease? {
+        guard let data = try? await http.get(Self.latestReleaseURL),
+              let release = try? JSONDecoder().decode(GitHubRelease.self, from: data),
+              !release.prerelease, !release.draft, release.tag_name.hasPrefix("flasher-v"),
+              let version = SemanticVersion(String(release.tag_name.dropFirst("flasher-v".count))),
+              version > SemanticVersion(currentVersion) ?? SemanticVersion(0, 0, 0) else { return nil }
+        return FlasherRelease(version: version.description, page: release.html_url)
     }
 
     private var cacheFile: URL { cacheDirectory.appending(path: "catalog.json") }
