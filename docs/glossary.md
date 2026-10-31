@@ -35,3 +35,6 @@ One term per concept. Use these in code, docs, the app and commits.
   library. Not "simulator".
 * **parameter names**: what an animation calls its tau and phi parameters ("Tail
   length", "Head width"). tau and phi stay the property names on the wire.
+* **animation docs**: the `animationDocs` characteristic: each animation's color use
+  and parameter names, built from the render library's table. See
+  [ble-comms.md](ble-comms.md).
