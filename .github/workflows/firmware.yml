@@ -49,7 +49,7 @@ jobs:
 
       - name: Core
         run: |
-          pip install pyserial  # the core's esptool.py runs under the system python on Linux
+          sudo apt-get update -q && sudo apt-get install -y -q python3-serial  # the core runs esptool.py under the system python on Linux
           arduino-cli core update-index --additional-urls $M5STACK_INDEX
           arduino-cli core install $M5STACK_CORE --additional-urls $M5STACK_INDEX
 
