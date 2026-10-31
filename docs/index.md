@@ -18,6 +18,8 @@
   with, host fidelity, golden frames, adding an animation.
 * [firmware-builds.md](firmware-builds.md) — CI, the firmware build layout and manifest,
   the fingerprint, and why the flasher never writes a merged image.
+* [getting-started.md](getting-started.md) — the four-step story that the home page, the Flasher
+  and the Remote tell together, and the Grove-cable wiring for an LED strip.
 * [glossary.md](glossary.md) — the canonical term for each concept.
 
 The architecture brief and its invariants are in [../AGENTS.md](../AGENTS.md).
