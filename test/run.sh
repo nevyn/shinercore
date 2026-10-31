@@ -1,5 +1,5 @@
 #!/bin/sh
-# Host-side tests: pure logic only (codecs, migration, wiring, transitions, rendering), Arduino surface stubbed.
+# Host-side tests: pure logic only (codecs, migration, wiring, transitions, layer summary, rendering), Arduino surface stubbed.
 # They build as an Atom Lite; wiringtest passes every board explicitly.
 set -e
 cd "$(dirname "$0")"
@@ -14,6 +14,7 @@ clang++ -std=c++17 $HOST -o build/transitiontest transitiontest.cpp ../ShinyType
 clang++ -std=c++17 $HOST -o build/proptest proptest.cpp ../ShinyTypes.cpp ../Wiring.cpp $RENDER
 # C++11 like the ESP32 toolchain, so device-only syntax errors show up here first
 clang++ -std=c++11 $HOST -o build/wiringtest wiringtest.cpp ../Wiring.cpp ../ShinyTypes.cpp $RENDER
+clang++ -std=c++11 -O2 $HOST -o build/layertest layertest.cpp ../ShinyTypes.cpp ../Wiring.cpp $RENDER
 clang++ -std=c++11 -O2 $HOST -o build/rendertest rendertest.cpp ../ShinyTypes.cpp ../Wiring.cpp $RENDER ../src/render/ShinerRender.cpp
 
 ./build/codectest
@@ -22,4 +23,5 @@ clang++ -std=c++11 -O2 $HOST -o build/rendertest rendertest.cpp ../ShinyTypes.cp
 ./build/transitiontest
 ./build/proptest
 ./build/wiringtest
+./build/layertest
 ./build/rendertest
