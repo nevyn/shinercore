@@ -1,0 +1,152 @@
+{
+  "schema": 1,
+  "commit": "1ac850e4a9affc794f95cdad3e8fc962078bbcf3",
+  "date": "2026-10-28T17:45:28+01:00",
+  "subject": "Merge pull request #5 from nevyn/claude/led-preset-defaults-easing-f9cba9",
+  "boards": [
+    {
+      "id": "atom-lite",
+      "name": "M5Atom Lite",
+      "chip": "esp32",
+      "elfSha256": "0d329cb1d17b706fca40098d878ceb740e801ff3907f8400babdcaa735a11f28",
+      "flashMode": "dio",
+      "flashFreq": "80m",
+      "flashSize": "4MB",
+      "uploadSpeed": 1500000,
+      "parts": [
+        {
+          "offset": 4096,
+          "file": "atom-lite-bootloader.bin",
+          "size": 18992,
+          "sha256": "f2dfacdea6ae72d0aeeb7c30e525c4c6fc768a041849feac694cbb2ee2224448"
+        },
+        {
+          "offset": 32768,
+          "file": "atom-lite-partitions.bin",
+          "size": 3072,
+          "sha256": "aaae2888c5a6a348004b5b436f47abb25ae32e72d9003902955a998eda723edd"
+        },
+        {
+          "offset": 57344,
+          "file": "atom-lite-boot_app0.bin",
+          "size": 8192,
+          "sha256": "f94c5d786a7a8fab06ac5d10e33bf37711a6697636dc037559ea19cc410a17f0"
+        },
+        {
+          "offset": 65536,
+          "file": "atom-lite-app.bin",
+          "size": 1178480,
+          "sha256": "59f04a047f0c73de19fc98f103fa24b61d25eccc1121392ed4154c0c2a8c74e9"
+        }
+      ]
+    },
+    {
+      "id": "atom-echo",
+      "name": "M5Atom Echo",
+      "chip": "esp32",
+      "elfSha256": "e8be280f41c6ffd38df235588cfe88630e1ce544d26382a89a5212cf05343249",
+      "flashMode": "dio",
+      "flashFreq": "80m",
+      "flashSize": "4MB",
+      "uploadSpeed": 1500000,
+      "parts": [
+        {
+          "offset": 4096,
+          "file": "atom-echo-bootloader.bin",
+          "size": 18992,
+          "sha256": "f2dfacdea6ae72d0aeeb7c30e525c4c6fc768a041849feac694cbb2ee2224448"
+        },
+        {
+          "offset": 32768,
+          "file": "atom-echo-partitions.bin",
+          "size": 3072,
+          "sha256": "aaae2888c5a6a348004b5b436f47abb25ae32e72d9003902955a998eda723edd"
+        },
+        {
+          "offset": 57344,
+          "file": "atom-echo-boot_app0.bin",
+          "size": 8192,
+          "sha256": "f94c5d786a7a8fab06ac5d10e33bf37711a6697636dc037559ea19cc410a17f0"
+        },
+        {
+          "offset": 65536,
+          "file": "atom-echo-app.bin",
+          "size": 1178480,
+          "sha256": "85fa2df84254a58fd34233953afdda804c1101fd46f893965cc97d38e1244f08"
+        }
+      ]
+    },
+    {
+      "id": "atoms3-lite",
+      "name": "M5AtomS3 Lite",
+      "chip": "esp32s3",
+      "elfSha256": "a39ba91ad2b6f6ba58a5dc1ddd969a79396d5e019647e1a186ec2bdd3e8fc02a",
+      "flashMode": "dio",
+      "flashFreq": "80m",
+      "flashSize": "8MB",
+      "uploadSpeed": 921600,
+      "parts": [
+        {
+          "offset": 0,
+          "file": "atoms3-lite-bootloader.bin",
+          "size": 15104,
+          "sha256": "175df8bcabaee9bb1027381153f0398226266162a32c2a04c1cf0253dbe87987"
+        },
+        {
+          "offset": 32768,
+          "file": "atoms3-lite-partitions.bin",
+          "size": 3072,
+          "sha256": "1d9cca96de0fe07ad7fc0648b9878ddecd9ce565e38b589ad20fea698ed4c80c"
+        },
+        {
+          "offset": 57344,
+          "file": "atoms3-lite-boot_app0.bin",
+          "size": 8192,
+          "sha256": "f94c5d786a7a8fab06ac5d10e33bf37711a6697636dc037559ea19cc410a17f0"
+        },
+        {
+          "offset": 65536,
+          "file": "atoms3-lite-app.bin",
+          "size": 1029664,
+          "sha256": "9e080030910231135e535f2e74b29fe088e3e402f41c3e5babd54e1ba3e31644"
+        }
+      ]
+    },
+    {
+      "id": "stickc-plus",
+      "name": "M5StickC Plus",
+      "chip": "esp32",
+      "elfSha256": "23582933871de881dd597c3525eac6aec63fbecec063d83c491f0751611540a3",
+      "flashMode": "dio",
+      "flashFreq": "80m",
+      "flashSize": "4MB",
+      "uploadSpeed": 1500000,
+      "parts": [
+        {
+          "offset": 4096,
+          "file": "stickc-plus-bootloader.bin",
+          "size": 18992,
+          "sha256": "f2dfacdea6ae72d0aeeb7c30e525c4c6fc768a041849feac694cbb2ee2224448"
+        },
+        {
+          "offset": 32768,
+          "file": "stickc-plus-partitions.bin",
+          "size": 3072,
+          "sha256": "aaae2888c5a6a348004b5b436f47abb25ae32e72d9003902955a998eda723edd"
+        },
+        {
+          "offset": 57344,
+          "file": "stickc-plus-boot_app0.bin",
+          "size": 8192,
+          "sha256": "f94c5d786a7a8fab06ac5d10e33bf37711a6697636dc037559ea19cc410a17f0"
+        },
+        {
+          "offset": 65536,
+          "file": "stickc-plus-app.bin",
+          "size": 1178464,
+          "sha256": "9b221adb20212ec8cec4b2dc71804d53034ad2e704519b9e48d7a5d08b19404f"
+        }
+      ]
+    }
+  ]
+}

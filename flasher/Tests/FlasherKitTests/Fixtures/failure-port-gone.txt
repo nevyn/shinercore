@@ -1,0 +1,7 @@
+esptool v5.6.0
+Serial port /dev/cu.usbmodem1101:
+
+A fatal error occurred: Could not open /dev/cu.usbmodem1101, the port is busy or doesn't exist.
+([Errno 2] could not open port /dev/cu.usbmodem1101: [Errno 2] No such file or directory: '/dev/cu.usbmodem1101')
+
+Hint: Check if the port is correct and ESP connected
