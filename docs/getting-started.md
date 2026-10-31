@@ -26,8 +26,10 @@ carries everything the strip needs, so the simplest cable is an M5Stack Grove ca
   from Data In, toward Data Out; solder at the end the arrows start from.
 
 The yellow wire is the board's LED pin: G26 on the Atom Lite and Atom Echo, G2 on the
-AtomS3 Lite (the Remote's board layouts, `WiringDiagram.swift`). The white wire is a
-second signal pin, free for a button, switch or knob ([wiring.md](wiring.md)).
+AtomS3 Lite, G32 on the M5StickC Plus (the Remote's board layouts, `WiringDiagram.swift`).
+The white wire is a second signal pin, free for a button, switch or knob
+([wiring.md](wiring.md)). On the M5StickC Plus it drives LEDs too, and there are no pins
+for buttons, switches or knobs.
 
 ## Terms
 
