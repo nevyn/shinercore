@@ -55,6 +55,10 @@ public final class ProcessEsptoolRunner: EsptoolRunner, @unchecked Sendable {
         process.standardError = pipe
         process.standardInput = FileHandle.nullDevice
 
+        // waitUntilExit() spins the calling thread's run loop, which on a dispatch worker can miss the exit and hang.
+        let exited = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in exited.signal() }
+
         let state = RunState()
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<EsptoolRun, Error>) in
@@ -73,7 +77,7 @@ public final class ProcessEsptoolRunner: EsptoolRunner, @unchecked Sendable {
                         lines.append(chunk).forEach(onLine)
                     }
                     lines.finish().forEach(onLine)
-                    process.waitUntilExit()
+                    exited.wait()
                     if state.cancelled {
                         continuation.resume(throwing: CancellationError())
                     } else {
