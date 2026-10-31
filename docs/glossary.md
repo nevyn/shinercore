@@ -28,3 +28,8 @@ One term per concept. Use these in code, docs, the app and commits.
 * **power cap**: the `maxCurrent` setting: an estimated current budget that bright
   frames are dimmed to fit. An estimate from frame data, never a measurement.
 * **mesh**: the ESP-NOW sync between nearby cores. See [mesh-sync.md](mesh-sync.md).
+* **render library**: the animations and blend modes in `src/render/`, behind the C
+  API in `ShinerRender.h`. The firmware draws frames with it, and the Remote app
+  draws its strip preview with it (a SwiftPM package). Not "shared code" or "engine".
+* **parameter names**: what an animation calls its tau and phi parameters ("Tail
+  length", "Head width"). tau and phi stay the property names on the wire.
