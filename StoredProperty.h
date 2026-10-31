@@ -3,6 +3,7 @@
 #define kDescriptorPresentationFormat "2904"
 #define kDescriptorPresentationFormat_String "19"
 
+#include <string.h>
 #include "Codecs.h"
 #include "LayerSummary.h"
 
