@@ -12,6 +12,9 @@
   decoupled from writes, the ArduinoBLE credit-leak wedge and local patch, watchdog.
 * [wiring.md](wiring.md) — pin roles (switch, button, knob, LEDs): boards and pins,
   the `wiring` JSON, the BLE characteristics and their MTU limits, runtime semantics.
+* [rendering.md](rendering.md) — the render library in `src/render/`: the animation
+  table, the C API and SwiftPM package that the Remote app draws its strip preview
+  with, host fidelity, golden frames, adding an animation.
 * [glossary.md](glossary.md) — the canonical term for each concept.
 
 The architecture brief and its invariants are in [../AGENTS.md](../AGENTS.md).
