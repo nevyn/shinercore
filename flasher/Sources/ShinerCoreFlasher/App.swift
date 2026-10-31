@@ -25,6 +25,7 @@ struct ShinerCoreFlasherApp: App {
         .commands {
             CommandGroup(replacing: .help) {
                 Button("How ShinerCore Works") { model.showingHowItWorks = true }
+                Link("ShinerCore Website", destination: Links.home)
             }
         }
     }
