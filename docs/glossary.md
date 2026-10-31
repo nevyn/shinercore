@@ -54,3 +54,5 @@ One term per concept. Use these in code, docs, the app and commits.
 * **layer move**: the `layerMove` write: moves one layer of the current preset to another
   index, shifting the layers in between. Wiring and layer gates stay on their slot. Not
   "reorder" or "swap".
+* **build guide**: the Remote's step-by-step for connecting an LED strip to a board
+  ([getting-started.md](getting-started.md)). Not "tutorial" or "wiring guide".
