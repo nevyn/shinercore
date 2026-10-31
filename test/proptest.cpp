@@ -267,7 +267,7 @@ int main() {
 
     printf("layer summary stores on change only, at most every 100 ms, and bumps the revision\n");
     {
-        LayerSummaryProperty summary("u5", "u6");
+        LayerSummaryProperty summary("u5", "u6", "u8");
         ShinyLayerSettings layers[LAYER_COUNT];
         const ShinyLayerSettings *slots[LAYER_COUNT];
         bool gates[LAYER_COUNT];
@@ -293,6 +293,17 @@ int main() {
         summary.offer(kLayerSummaryMesh, slots, gates, 0.2f);
         expectInt("unchanged not staged", summary.flushPublish() ? 1 : 0, 0);
         expectInt("unchanged keeps the revision", summary.revision, 3);
+
+        expect("first offer stores the opacities", summary.opacities.stored, "1 1 1 1 1 1 1 1 1 1");
+        layers[3].opacity = 0.5f;
+        summary.offer(kLayerSummaryMesh, slots, gates, 0.1f);
+        expect("opacity change stored", summary.opacities.stored, "1 1 1 0.5 1 1 1 1 1 1");
+        expectInt("opacity change alone bumps the revision", summary.revision, 4);
+        layers[3].opacity = 1;
+        layers[0].animationIndex = 2;
+        summary.offer(kLayerSummaryMesh, slots, gates, 0.1f);
+        expectInt("both changing bumps it once", summary.revision, 5);
+        summary.flushPublish();
 
         summary.revision = 65535;
         gates[0] = true;

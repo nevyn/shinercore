@@ -1,5 +1,5 @@
-// Host tests for LayerSummary.h: the `layers` text, float trimming, layerMove parsing
-// and the move itself.
+// Host tests for LayerSummary.h: the `layers` and `layerOpacities` texts, float
+// trimming, layerMove parsing and the move itself.
 #include "FastLED.h"
 #include "../LayerSummary.h"
 #include <chrono>
@@ -33,6 +33,11 @@ struct Stack {
     const char *summary(int preset) {
         static LayerSummaryText t;
         formatLayerSummary(t, preset, slots, gates);
+        return t.chars;
+    }
+    const char *opacities() {
+        static LayerSummaryText t;
+        formatLayerOpacities(t, slots);
         return t.chars;
     }
 };
@@ -124,6 +129,25 @@ int main() {
         double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - start).count() / runs;
         check("timed runs format the same text", strcmp(t.chars, text) == 0);
         printf("  worst case formats in %.2f us on this host\n", us);
+    }
+
+    printf("opacities\n");
+    {
+        Stack s;
+        expect("defaults", s.opacities(), "1 1 1 1 1 1 1 1 1 1");
+        s.layers[1].opacity = 0.3f;
+        s.layers[9].opacity = 0.125f;
+        s.layers[4].opacity = 0;
+        expect("fractions, Nothing slots included", s.opacities(), "1 0.3 1 1 0 1 1 1 1 0.125");
+        ShinyLayerSettings neighbor;
+        neighbor.opacity = 0.5f;
+        s.slots[0] = &neighbor;
+        expect("reads through the slot pointers", s.opacities(), "0.5 0.3 1 1 0 1 1 1 1 0.125");
+        for(int i = 0; i < LAYER_COUNT; i++) s.layers[i].opacity = 0.999f;
+        s.slots[0] = &s.layers[0];
+        int length = strlen(s.opacities());
+        printf("  worst case is %d bytes\n", length);
+        check("worst case fits its characteristic", length <= kLayerOpacitiesMaxBytes);
     }
 
     printf("overflow drops, never writes past the buffer\n");
