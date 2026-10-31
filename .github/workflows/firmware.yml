@@ -1,0 +1,71 @@
+# Every push: host tests and a compile of every board. Pushes to main also publish a
+# firmware build as a prerelease (docs/firmware-builds.md).
+name: firmware
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  M5STACK_INDEX: https://static-cdn.m5stack.com/resource/arduino/package_m5stack_index.json
+  M5STACK_CORE: m5stack:esp32@2.1.1
+  # Bump these when a fork moves; docs/building-and-testing.md says why the forks exist.
+  ARDUINOBLE_SHA: 906683f55ca6bdb4d6166b73d5fc637b0d4c23f2
+  FASTLED_SHA: 4a0f6a44602038ebc7d0143d70f16384ad6a1b16
+  OVERANIMATE_SHA: 1ff0861f294fc38345411ccc94bb574729f51701
+  ARDUINOJSON_TAG: v7.4.2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Libraries
+        run: |
+          libs=$HOME/Dev/Arduino/libraries  # test/run.sh expects ArduinoJson here
+          mkdir -p $libs
+          fetch() {  # fetch REPO DIR SHA
+            git init -q $libs/$2
+            git -C $libs/$2 fetch -q --depth 1 https://github.com/$1.git $3
+            git -C $libs/$2 checkout -q FETCH_HEAD
+          }
+          fetch nevyn/ArduinoBLE ArduinoBLE $ARDUINOBLE_SHA
+          fetch nevyn/FastLED FastLED $FASTLED_SHA
+          fetch nevyn/OverAnimate OverAnimate $OVERANIMATE_SHA
+          git clone -q --depth 1 -b $ARDUINOJSON_TAG https://github.com/bblanchon/ArduinoJson.git $libs/ArduinoJson
+
+      - name: Host tests
+        run: test/run.sh
+
+      - uses: arduino/setup-arduino-cli@v2
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.arduino15
+          key: arduino15-${{ env.M5STACK_CORE }}
+
+      - name: Core
+        run: |
+          pip install pyserial  # the core's esptool.py runs under the system python on Linux
+          arduino-cli core update-index --additional-urls $M5STACK_INDEX
+          arduino-cli core install $M5STACK_CORE --additional-urls $M5STACK_INDEX
+
+      - name: Build every board
+        run: ci/build-firmware.sh dist --libraries $HOME/Dev/Arduino/libraries
+
+      - name: Publish firmware build
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=firmware-${GITHUB_SHA::7}
+          # A re-run replaces the assets of the release that the first run made.
+          if gh release view $tag > /dev/null 2>&1; then
+            gh release upload $tag dist/* --clobber
+          else
+            gh release create $tag dist/* --prerelease --target $GITHUB_SHA \
+              --title "Firmware ${GITHUB_SHA::7}" --notes "$(git log -1 --format=%s)"
+          fi
