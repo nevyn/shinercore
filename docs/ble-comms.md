@@ -87,7 +87,7 @@ to re-read it: `wiring` and `pinStatus` in [wiring.md](wiring.md).
   canonical echo is delayed (≤ ~50ms + queue position).
 * Only-latest: intermediate drag values may never be notified; the settled value
   always is.
-* A cursor change (layer/preset) republishes all 8 per-layer characteristics, spread
+* A cursor change (layer/preset) republishes all 9 per-layer characteristics, spread
   over ~½s by the flush limiter.
 
 ## Read-only vocabularies
@@ -109,6 +109,16 @@ existing key breaks older apps, which decode the whole value or nothing.
   Built from the render library's animation table ([rendering.md](rendering.md)).
   Cores without it predate it; the app then falls back to its own copy of the table.
 * `wiringDocs`: see [wiring.md](wiring.md).
+
+## Layer opacity
+
+`opacity` (`721da9f2-34da-4da2-bb64-0de65be811db`, read, write, notify) is a per-layer
+setting like `speed`: the cursor addresses it, and its value is decimal float text.
+It is how strongly the layer composites onto the layers below it, for every blend
+mode: 0 hides the layer, 1 (the default) blends it in fully. A write outside 0-1 is
+clamped, like every ranged property. NVS key `opacity-<layer>[-<preset>]`. The
+firmware composites a layer at its layer gate's fade times its opacity
+([rendering.md](rendering.md)).
 
 ## The layer summary
 

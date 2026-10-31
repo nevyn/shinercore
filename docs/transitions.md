@@ -15,7 +15,8 @@ slider drag smoothly, because a new target mid-ease only changes where the ease 
 * `speed` eases in log space. It is seconds (or beats) per cycle, but the eye sees its
   inverse. Easing it linearly made slow-to-fast take over a second and fast-to-slow
   look instant.
-* Brightness and the layer gate ease the same way.
+* Brightness, the layer gate and `opacity` ease the same way. A change of opacity never
+  crossfades, however large: every value in between is a valid look.
 
 ## Crossfade
 

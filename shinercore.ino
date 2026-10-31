@@ -215,6 +215,7 @@ void applyDerivedState(TimeInterval dt)
             shown.p_tau = easeParam(shown.p_tau, target.p_tau, alpha);
             shown.p_phi = easeParam(shown.p_phi, target.p_phi, alpha);
             shown.beatSync = target.beatSync;
+            shown.opacity = easeTo(shown.opacity, target.opacity, alpha, 0.01f);
         }
 
         // Lands exactly on 0, so a closed gate stops the layer rendering

@@ -35,6 +35,10 @@ One term per concept. Use these in code, docs, the app and commits.
 * **crossfade**: how a large settings change reaches the pixels: the strip dissolves
   from the last frame to the new scene. Not "fade" or "morph".
 * **layer**: one of the ten composited animations in a preset.
+* **opacity**: how strongly a layer composites onto the layers below it, 0-1: the mix
+  between the frame without the layer and the frame with it fully blended in. A
+  per-layer setting in a preset, like speed. Not "strength", "mix" or "layer
+  brightness" (brightness is the global setting).
 * **power cap**: the `maxCurrent` setting: an estimated current budget that bright
   frames are dimmed to fit. An estimate from frame data, never a measurement.
 * **mesh**: the ESP-NOW sync between nearby cores. See [mesh-sync.md](mesh-sync.md).

@@ -49,6 +49,7 @@ struct ShinyLayerSettings
     // and the animation phase-locks to the beat grid: 1 = a cycle per beat,
     // 4 = a cycle per bar, 0.5 = twice per beat.
     int beatSync = 0;
+    float opacity = 1.0; // how strongly the layer composites onto the layers below, 0-1
 };
 
 // NVS key for a per-layer setting. Preset 0 uses the unsuffixed form that the

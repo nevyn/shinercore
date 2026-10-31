@@ -62,6 +62,8 @@ int main() {
     check("phi sign flip crossfades", needsCrossfade(base, s));
     s = base; s.p_phi = 0;
     check("phi to zero crossfades", needsCrossfade(base, s));
+    s = base; s.opacity = 0;
+    check("opacity 1 -> 0 eases", !needsCrossfade(base, s));
 
     printf("eases land\n");
     checkSettles("color by the threshold, up", []() -> std::function<bool(float)> {
@@ -88,7 +90,7 @@ int main() {
         auto v = std::make_shared<float>(0);
         return [v](float a) { *v = easeTo(*v, 255, a, 2); return *v == 255; };
     });
-    checkSettles("layer gate", []() -> std::function<bool(float)> {
+    checkSettles("layer gate and opacity, full swing", []() -> std::function<bool(float)> {
         auto v = std::make_shared<float>(1);
         return [v](float a) { *v = easeTo(*v, 0, a, 0.01f); return *v == 0; };
     });
