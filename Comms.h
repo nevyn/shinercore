@@ -79,15 +79,10 @@ std::vector<Property*> props = [&] {
     return v;
 }();
 
-// Pull every layer of the current preset out of NVS into localPrefs, and
-// republish the cursor layer's values to bluetooth
+// Pull every layer of the current preset out of NVS (or its pending writes) into
+// localPrefs, and republish the cursor layer's values to bluetooth
 void loadLayers()
 {
-    // debounced writes must land before the store is read back
-    for(const auto& prop: props)
-    {
-        prop->flushPersist();
-    }
     for(const auto& prop: layerProps)
     {
         for(int layer = 0; layer < LAYER_COUNT; layer++)
@@ -204,6 +199,8 @@ void commsUpdate(TimeInterval delta)
         prop->poll();
         prop->update(delta);
     }
+    static size_t nextPersist = 0;
+    flushOneSettledPersist(props, nextPersist);
 
     // One staged publish per 50ms, round-robin: a burst (the cursor fanout's
     // 8, a slider drag's stream) spaced out never exhausts the controller's

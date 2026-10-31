@@ -180,8 +180,6 @@ persists, notifies, and reaches the mesh like any edit. Layer targets address la
   from the last position it wrote, or reaches an end, and never during the first 0.5 s
   after its role starts (boot, a wiring change, a claim ending): a knob only edits
   when someone turns it.
-* Two knobs turned at once that address the same setting on different layers each
-  flush the other's pending NVS write, so they persist every frame instead of once.
 * HSV channels hold the HSV value they last wrote and only re-derive it from the stored
   color if something else changed that color, so the other two channels don't drift.
 

@@ -248,7 +248,7 @@ bool presetHasAnimations(int presetIndex)
 {
     for(int layer = 0; layer < LAYER_COUNT; layer++)
     {
-        String val = prefs.getString(layerKey("animation", layer, presetIndex).c_str(), "Nothing");
+        String val = animationProp.storedString(layerKey("animation", layer, presetIndex), "Nothing");
         if(val != "Nothing") return true;
     }
     return false;

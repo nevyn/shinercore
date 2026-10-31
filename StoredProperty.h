@@ -18,8 +18,9 @@
 // Writes only touch RAM; the projections trail behind. publish() stages the
 // latest value for commsUpdate's rate-limited flush (a notify burst can
 // exhaust the BLE controller's ACL credits, and ArduinoBLE busy-waits on
-// them), and persist() debounces until the value settles (a slider drag is
-// otherwise a flash commit per tick).
+// them), and persist() debounces each key until its value settles (a slider
+// drag is otherwise a flash commit per tick); commsUpdate then writes at most
+// one settled key per frame (a layer move settles up to 80 at once).
 static const float kPersistSettleSeconds = 0.5;
 class Property
 {
@@ -45,10 +46,7 @@ public:
     }
     void update(float delta)
     {
-        if(_persistPending && (_sincePersistStage += delta) >= kPersistSettleSeconds)
-        {
-            flushPersist();
-        }
+        for(auto &p: _pending) p.sinceStaged += delta;
     }
     // Sends the staged value (GATT store + notify). True if anything was sent.
     bool flushPublish()
@@ -58,21 +56,32 @@ public:
         chara.writeValue(_publishValue);
         return true;
     }
+    // Writes the oldest pending key whose value has settled. True if it wrote.
+    bool flushSettledPersist()
+    {
+        for(size_t i = 0; i < _pending.size(); i++)
+        {
+            if(_pending[i].sinceStaged < kPersistSettleSeconds) continue;
+            store(_pending[i]);
+            _pending.erase(_pending.begin() + i);
+            return true;
+        }
+        return false;
+    }
+    // Writes every pending key now, settled or not: only before a restart.
     void flushPersist()
     {
-        if(!_persistPending) return;
-        _persistPending = false;
-        // A value at its default is stored as absence, which is what lets
-        // Migration.h and presetHasAnimations() treat "" as unconfigured
-        if(_persistValue == _persistDefault)
+        for(const auto &p: _pending) store(p);
+        _pending.clear();
+    }
+    // What NVS holds for key once the pending writes land.
+    String storedString(const String &key, const char *fallback)
+    {
+        for(const auto &p: _pending)
         {
-            prefs.remove(_persistKey.c_str());
+            if(p.key == key) return p.value;
         }
-        else if(prefs.putString(_persistKey.c_str(), _persistValue) == 0)
-        {
-            logger.println("failed to store preferences!"); // value is still live in RAM; carry on
-        }
-        logger.print(_persistKey); logger.print(" = "); logger.println(_persistValue);
+        return prefs.getString(key.c_str(), fallback);
     }
 protected:
     virtual void handleWrite(const String &wire) = 0;
@@ -81,16 +90,19 @@ protected:
         _publishValue = encoded;
         _publishDirty = true;
     }
+    // The key is captured now: if the layer/preset cursor moves before the
+    // value settles, the pending write still lands where it was aimed
     void persist(const String &curKey, const String &encoded, const String &encodedDefault)
     {
-        // The key is captured now: if the layer/preset cursor moves before the
-        // debounce settles, the pending write still lands where it was aimed
-        if(_persistPending && _persistKey != curKey) flushPersist();
-        _persistKey = curKey;
-        _persistValue = encoded;
-        _persistDefault = encodedDefault;
-        _persistPending = true;
-        _sincePersistStage = 0;
+        for(auto &p: _pending)
+        {
+            if(p.key != curKey) continue;
+            p.value = encoded;
+            p.sinceStaged = 0;
+            return;
+        }
+        PendingPersist p = {curKey, encoded, encodedDefault, 0};
+        _pending.push_back(p);
     }
     BLEStringCharacteristic chara;
     String key;
@@ -98,10 +110,42 @@ protected:
     BLEDescriptor formatDescriptor;
     bool _publishDirty = false;
     String _publishValue;
-    bool _persistPending = false;
-    String _persistKey, _persistValue, _persistDefault;
-    float _sincePersistStage = 0;
+    struct PendingPersist
+    {
+        String key, value, defaultValue;
+        float sinceStaged;
+    };
+    std::vector<PendingPersist> _pending; // one entry per key, oldest first
+    static void store(const PendingPersist &p)
+    {
+        // A value at its default is stored as absence, which is what lets
+        // Migration.h and presetHasAnimations() treat "" as unconfigured
+        if(p.value == p.defaultValue)
+        {
+            prefs.remove(p.key.c_str());
+        }
+        else if(prefs.putString(p.key.c_str(), p.value) == 0)
+        {
+            logger.println("failed to store preferences!"); // value is still live in RAM; carry on
+        }
+        logger.print(p.key); logger.print(" = "); logger.println(p.value);
+    }
 };
+
+// Writes at most one settled pending key across props, round-robin from next.
+// commsUpdate calls it once a frame, so no frame does more than one NVS write.
+static inline bool flushOneSettledPersist(const std::vector<Property*> &props, size_t &next)
+{
+    for(size_t i = 0; i < props.size(); i++)
+    {
+        if(props[(next + i) % props.size()]->flushSettledPersist())
+        {
+            next = (next + i + 1) % props.size();
+            return true;
+        }
+    }
+    return false;
+}
 
 class GlobalPropertyBase : public Property
 {
@@ -330,7 +374,7 @@ public:
 
     virtual void load(int layer, int preset)
     {
-        String stored = prefs.getString(layerKey(key, layer, preset).c_str(), "");
+        String stored = storedString(layerKey(key, layer, preset), "");
         T v;
         localPrefs.layers[layer].*member = (!stored.isEmpty() && C::decode(stored, v)) ? constrained(v) : defaultValue;
     }

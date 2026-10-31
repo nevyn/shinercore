@@ -29,9 +29,14 @@ range, 2.4GHz contention with the ESP-NOW mesh), stock ArduinoBLE never resets
 
 1. **Decoupled projections** (StoredProperty.h): `publish()` stages only-latest;
    commsUpdate flushes at most one characteristic per 50ms, round-robin. `persist()`
-   debounces 0.5s of settle, so a drag is one flash write, not hundreds. The pending
-   NVS key is captured at set time, so a cursor move mid-debounce can't misfile it;
-   `loadLayers` flushes pending persists before reading the store back.
+   keeps one pending write per NVS key and debounces each key until its value has
+   settled for 0.5s, so a drag is one flash write, not hundreds. commsUpdate then
+   writes at most one settled key per frame, round-robin across properties, so a
+   burst of keys (a layer move settles up to 80) never stalls a frame with more than
+   one flash write. The key is captured at set time, so a cursor move mid-debounce
+   can't misfile it. Pending writes are part of the store: `loadLayers` and
+   `presetHasAnimations` read them through `storedString` instead of waiting for
+   them to land. Only the restart after a wiring change writes everything at once.
 2. **ArduinoBLE fork**: `_pendingPkt = 0` on disconnect (`EVT_DISCONN_COMPLETE`
    handler in `src/utility/HCI.cpp`). `~/Dev/Arduino/libraries/ArduinoBLE` is a git
    checkout of github.com/nevyn/ArduinoBLE, branch `shinercore` = upstream tag 1.3.6
@@ -145,10 +150,10 @@ whole stack, so the app can list every layer and preview the composite.
   follows the layer to TO. Wiring and layer gates stay with their index, because
   wiring names layer slots across all presets ([wiring.md](wiring.md)). Malformed or
   out-of-range values are ignored and logged to serial.
-  The move persists only the fields whose value changed. Each property holds one
-  pending NVS write, so all but the last changed layer of each property are written
-  synchronously in the frame that applies the move: a few writes for a typical stack,
-  at most 72 for ten full layers. A move is a single write per drag, not a stream.
+  The move persists only the fields whose value changed, through the persist limiter
+  above: nothing is written in the frame that applies it, and a move of ten full
+  layers lands its 80 writes one per frame, from 0.5 s after the move (about 1.8 s
+  in all at 60 fps).
 
 Cores without these characteristics predate them; the app then shows the cursor's
 layer alone.
