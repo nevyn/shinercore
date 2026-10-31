@@ -283,12 +283,32 @@ protected:
     float _sinceOffer = kLayerSummaryInterval;
 };
 
+// `layerMove` (docs/ble-comms.md, The layer summary): write-only, never persisted
+// itself. Hands each valid `FROM TO` to onMove; logs and drops anything else.
+class LayerMoveProperty : public Property
+{
+public:
+    LayerMoveProperty(const char *uuid, const char *key, void (*onMove)(int from, int to))
+      : Property(uuid, key, BLEWrite), onMove(onMove)
+    {}
+protected:
+    virtual void handleWrite(const String &wire)
+    {
+        int from, to;
+        if(decodeLayerMove(wire.c_str(), from, to)) onMove(from, to);
+        else { logger.print("layerMove rejected, want \"FROM TO\" with layer indices: "); logger.println(wire); }
+    }
+    void (*onMove)(int from, int to);
+};
+
 class LayerPropertyBase : public Property
 {
 public:
     using Property::Property;
     virtual void load(int layer, int preset) = 0;
     virtual void republish() = 0;
+    // Persists each layer of the current preset whose value differs from before.
+    virtual void persistChanged(const ShinyLayerSettings before[LAYER_COUNT]) = 0;
 };
 
 // A per-layer setting: a field of ShinyLayerSettings, stored per (layer,
@@ -326,6 +346,15 @@ public:
         field = constrained(value);
         persist(layerKey(key, layer, localPrefs.currentPresetIndex), C::encode(field), C::encode(defaultValue));
         if(layer == localPrefs.currentLayerIndex) republish();
+    }
+    virtual void persistChanged(const ShinyLayerSettings before[LAYER_COUNT])
+    {
+        for(int layer = 0; layer < LAYER_COUNT; layer++)
+        {
+            const T &value = localPrefs.layers[layer].*member;
+            if(value == before[layer].*member) continue;
+            persist(layerKey(key, layer, localPrefs.currentPresetIndex), C::encode(value), C::encode(defaultValue));
+        }
     }
 protected:
     T &current() { return localPrefs.layers[localPrefs.currentLayerIndex].*member; }

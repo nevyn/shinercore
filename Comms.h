@@ -31,6 +31,7 @@ String buildDocumentationJSON() {
 // selects which layer the per-layer characteristics address.
 void loadLayers();
 void republishLayers();
+void applyLayerMove(int from, int to);
 
 // global settings
 GlobalProperty<RunMode> modeProp("70d4cabe-82cc-470a-a572-95c23f1316ff", "mode", &localPrefs.mode, Off, On);
@@ -50,6 +51,7 @@ GlobalProperty<String> meshGroupProp("12239682-6d25-45d1-a3b5-182dfa6cf106", "me
 GlobalProperty<int> carouselBeatsProp("1bc3f537-b285-4def-a2f9-285dae0b2aaa", "carouselBeats", &localPrefs.carouselBeats, 1, 64);
 WiringProperty wiringProp("2be57867-0fd5-45b7-93af-c9edff69fe60", "wiring", &localPrefs.wiring);
 PinStatusProperty pinStatusProp("53775889-c119-4673-89f2-359a80fabcca", "pinStatus");
+LayerMoveProperty layerMoveProp("df64df61-5728-4e42-809f-bb7735fb30a0", "layerMove", applyLayerMove);
 LayerSummaryProperty layerSummaryProp("9231bed4-aec8-4fa0-88be-3242e937fc0a", "a988b500-1b73-48e7-b353-9612e873af48");
 BLEStringCharacteristic wiringDocsChara("682bf183-44f6-4dc9-9eb0-640c05ae45db", BLERead, 512);
 BLEDescriptor wiringDocsNameDescriptor(kDescriptorUserDesc, "wiringDocs");
@@ -68,11 +70,12 @@ std::vector<GlobalPropertyBase*> globalProps = {&modeProp, &brightnessProp, &nam
 std::vector<LayerPropertyBase*> layerProps = {&speedProp, &colorProp, &color2Prop, &tauProp, &phiProp, &animationProp, &blendModeProp, &beatSyncProp};
 std::vector<Property*> props = [&] {
     std::vector<Property*> v;
-    v.reserve(globalProps.size() + layerProps.size() + 2);
+    v.reserve(globalProps.size() + layerProps.size() + 3);
     v.insert(v.end(), globalProps.begin(), globalProps.end());
     v.insert(v.end(), layerProps.begin(), layerProps.end());
     v.push_back(&pinStatusProp);
     v.push_back(&layerSummaryProp);
+    v.push_back(&layerMoveProp);
     return v;
 }();
 
@@ -101,6 +104,21 @@ void republishLayers()
     {
         prop->republish();
     }
+}
+
+// One edit of the current preset: the mesh shares it like any change to localPrefs.layers
+void applyLayerMove(int from, int to)
+{
+    if(from == to) return;
+    ShinyLayerSettings before[LAYER_COUNT];
+    std::copy(localPrefs.layers, localPrefs.layers + LAYER_COUNT, before);
+    moveLayer(localPrefs.layers, from, to);
+    for(const auto& prop: layerProps)
+    {
+        prop->persistChanged(before);
+    }
+    if(localPrefs.currentLayerIndex == from) layerProp.set(to); // republishes via its hook
+    else republishLayers();
 }
 
 void commsSetup(void)

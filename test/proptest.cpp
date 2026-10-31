@@ -4,6 +4,7 @@
 // BLE and Preferences are faked; see docs/ble-comms.md for why this decoupling
 // exists at all.
 #include "FastLED.h"
+#include <algorithm>
 #include <map>
 #include <vector>
 
@@ -270,6 +271,46 @@ int main() {
         summary.offer(kLayerSummaryMesh, slots, gates, 0.1f);
         summary.flushPublish();
         expect("revision wraps", summary.chara.stored, "0");
+    }
+
+    printf("a layer move persists the changed layers of the current preset\n");
+    {
+        localPrefs = ShinySettings();
+        prefs = Prefs();
+        Fixture f;
+        localPrefs.currentPresetIndex = 2;
+        localPrefs.layers[0].p_tau = 1;
+        localPrefs.layers[1].p_tau = 2;
+        prefs.strings["tau-0-2"] = "1.000";
+        prefs.strings["tau-1-2"] = "2.000";
+        ShinyLayerSettings before[LAYER_COUNT];
+        std::copy(localPrefs.layers, localPrefs.layers + LAYER_COUNT, before);
+        moveLayer(localPrefs.layers, 0, 2);
+        f.tau.persistChanged(before);
+        f.tau.update(1.0f);
+        expect("layer 0 holds old layer 1", nvs("tau-0-2"), "2.000");
+        expect("layer 1 holds the default as absence", nvs("tau-1-2"), "<absent>");
+        expect("layer 2 holds old layer 0", nvs("tau-2-2"), "1.000");
+        expect("layers above untouched", nvs("tau-3-2"), "<absent>");
+        expectInt("unchanged layers not written", prefs.putCount, 2);
+    }
+
+    printf("layerMove hands valid moves on and drops the rest\n");
+    {
+        static int movedFrom, movedTo, moves;
+        moves = 0;
+        LayerMoveProperty move("u7", "layerMove", [](int from, int to) { movedFrom = from; movedTo = to; moves++; });
+        move.chara.incoming = "3 7"; move.chara._written = true;
+        move.poll();
+        expectInt("valid move handed on", moves, 1);
+        expectInt("from", movedFrom, 3);
+        expectInt("to", movedTo, 7);
+        move.chara.incoming = "3 10"; move.chara._written = true;
+        move.poll();
+        move.chara.incoming = "garbage"; move.chara._written = true;
+        move.poll();
+        expectInt("invalid moves dropped", moves, 1);
+        expectInt("nothing echoed", move.flushPublish() ? 1 : 0, 0);
     }
 
     printf(failures ? "\n%d FAILURES\n" : "\nall passed\n", failures);
