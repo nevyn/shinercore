@@ -165,6 +165,10 @@ BLE. A gate fades its layer in and out with the settings ease ([transitions.md](
 layer composites as `blend(under, blendMode(under, layer), gain)`. A switch on a layer
 overrides any button toggle of the same layer.
 
+**A layer move leaves wiring and layer gates on their slot** ([ble-comms.md](ble-comms.md),
+The layer summary): a switch on layer 3 controls whichever layer sits at index 3 after
+the move, and so does a knob that targets layer 3.
+
 **Knobs write the target setting** through the same path as an app write, so the value
 persists, notifies, and reaches the mesh like any edit. Layer targets address layer
 *N* of the current preset, independent of the BLE layer cursor.
@@ -176,8 +180,6 @@ persists, notifies, and reaches the mesh like any edit. Layer targets address la
   from the last position it wrote, or reaches an end, and never during the first 0.5 s
   after its role starts (boot, a wiring change, a claim ending): a knob only edits
   when someone turns it.
-* Two knobs turned at once that address the same setting on different layers each
-  flush the other's pending NVS write, so they persist every frame instead of once.
 * HSV channels hold the HSV value they last wrote and only re-derive it from the stored
   color if something else changed that color, so the other two channels don't drift.
 

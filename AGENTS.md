@@ -31,9 +31,10 @@ M5Unified/OverAnimate already does it → one line → minimum code that works.
 * **Derived state is recomputed every frame** in applyDerivedState() — brightness,
   strip lengths, durations, the mic lifecycle. Property writes have no sync
   obligations. Don't add push-style side effects; add a line to applyDerivedState.
-* **Property writes never block.** NVS persists debounce and BLE notifies trickle
-  through commsUpdate's flush limiter; both once ran inline and hung the core
-  (docs/ble-comms.md). Don't add a synchronous flash or radio call to a write path.
+* **Property writes never block.** NVS persists debounce per key and land at most one
+  per frame; BLE notifies trickle through commsUpdate's flush limiter. Both once ran
+  inline and hung the core (docs/ble-comms.md). Don't add a synchronous flash or radio
+  call to a write path.
 * **Animations are pure (t, prefs) -> pixels.** No per-pixel or per-frame state in an
   animation function — that's what makes layering compose and future mesh sync
   possible. Use the hash() helpers for randomness. (Fire2012 stayed dead for this
@@ -75,7 +76,8 @@ firmware property (Comms.h) + a PropertyKey in CoreProps (ShinerCoreKit,
 Model/PropertyKey.swift) + a control box in the app's tab views + if enum-valued, the
 documentation characteristic JSON. The app subscribes to notifications; every settled
 value reaches it only because publish() is the sole change path — keep it that way.
-`wiring` is too long to notify; its changes are signalled by the revision in `pinStatus`.
+`wiring` is too long to notify; its changes are signalled by the revision in `pinStatus`,
+and `layers` changes by `layersRevision`.
 (Notifies are only-latest and rate-limited; intermediate values may never be sent.)
 
 ## OverAnimate

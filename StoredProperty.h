@@ -3,7 +3,9 @@
 #define kDescriptorPresentationFormat "2904"
 #define kDescriptorPresentationFormat_String "19"
 
+#include <string.h>
 #include "Codecs.h"
+#include "LayerSummary.h"
 
 // A setting, exposed over bluetooth as a string characteristic and persisted in
 // NVS as a string, but decoded into a typed field that business logic reads
@@ -17,8 +19,9 @@
 // Writes only touch RAM; the projections trail behind. publish() stages the
 // latest value for commsUpdate's rate-limited flush (a notify burst can
 // exhaust the BLE controller's ACL credits, and ArduinoBLE busy-waits on
-// them), and persist() debounces until the value settles (a slider drag is
-// otherwise a flash commit per tick).
+// them), and persist() debounces each key until its value settles (a slider
+// drag is otherwise a flash commit per tick); commsUpdate then writes at most
+// one settled key per frame (a layer move settles up to 80 at once).
 static const float kPersistSettleSeconds = 0.5;
 class Property
 {
@@ -34,7 +37,7 @@ public:
         chara.addDescriptor(formatDescriptor);
     }
     const char *uuid() { return chara.uuid(); }
-    void advertise(BLEService &onService) { onService.addCharacteristic(chara); }
+    virtual void advertise(BLEService &onService) { onService.addCharacteristic(chara); }
     void poll()
     {
         if(chara.written())
@@ -44,10 +47,7 @@ public:
     }
     void update(float delta)
     {
-        if(_persistPending && (_sincePersistStage += delta) >= kPersistSettleSeconds)
-        {
-            flushPersist();
-        }
+        for(auto &p: _pending) p.sinceStaged += delta;
     }
     // Sends the staged value (GATT store + notify). True if anything was sent.
     bool flushPublish()
@@ -57,21 +57,32 @@ public:
         chara.writeValue(_publishValue);
         return true;
     }
+    // Writes the oldest pending key whose value has settled. True if it wrote.
+    bool flushSettledPersist()
+    {
+        for(size_t i = 0; i < _pending.size(); i++)
+        {
+            if(_pending[i].sinceStaged < kPersistSettleSeconds) continue;
+            store(_pending[i]);
+            _pending.erase(_pending.begin() + i);
+            return true;
+        }
+        return false;
+    }
+    // Writes every pending key now, settled or not: only before a restart.
     void flushPersist()
     {
-        if(!_persistPending) return;
-        _persistPending = false;
-        // A value at its default is stored as absence, which is what lets
-        // Migration.h and presetHasAnimations() treat "" as unconfigured
-        if(_persistValue == _persistDefault)
+        for(const auto &p: _pending) store(p);
+        _pending.clear();
+    }
+    // What NVS holds for key once the pending writes land.
+    String storedString(const String &key, const char *fallback)
+    {
+        for(const auto &p: _pending)
         {
-            prefs.remove(_persistKey.c_str());
+            if(p.key == key) return p.value;
         }
-        else if(prefs.putString(_persistKey.c_str(), _persistValue) == 0)
-        {
-            logger.println("failed to store preferences!"); // value is still live in RAM; carry on
-        }
-        logger.print(_persistKey); logger.print(" = "); logger.println(_persistValue);
+        return prefs.getString(key.c_str(), fallback);
     }
 protected:
     virtual void handleWrite(const String &wire) = 0;
@@ -80,16 +91,19 @@ protected:
         _publishValue = encoded;
         _publishDirty = true;
     }
+    // The key is captured now: if the layer/preset cursor moves before the
+    // value settles, the pending write still lands where it was aimed
     void persist(const String &curKey, const String &encoded, const String &encodedDefault)
     {
-        // The key is captured now: if the layer/preset cursor moves before the
-        // debounce settles, the pending write still lands where it was aimed
-        if(_persistPending && _persistKey != curKey) flushPersist();
-        _persistKey = curKey;
-        _persistValue = encoded;
-        _persistDefault = encodedDefault;
-        _persistPending = true;
-        _sincePersistStage = 0;
+        for(auto &p: _pending)
+        {
+            if(p.key != curKey) continue;
+            p.value = encoded;
+            p.sinceStaged = 0;
+            return;
+        }
+        PendingPersist p = {curKey, encoded, encodedDefault, 0};
+        _pending.push_back(p);
     }
     BLEStringCharacteristic chara;
     String key;
@@ -97,10 +111,42 @@ protected:
     BLEDescriptor formatDescriptor;
     bool _publishDirty = false;
     String _publishValue;
-    bool _persistPending = false;
-    String _persistKey, _persistValue, _persistDefault;
-    float _sincePersistStage = 0;
+    struct PendingPersist
+    {
+        String key, value, defaultValue;
+        float sinceStaged;
+    };
+    std::vector<PendingPersist> _pending; // one entry per key, oldest first
+    static void store(const PendingPersist &p)
+    {
+        // A value at its default is stored as absence, which is what lets
+        // Migration.h and presetHasAnimations() treat "" as unconfigured
+        if(p.value == p.defaultValue)
+        {
+            prefs.remove(p.key.c_str());
+        }
+        else if(prefs.putString(p.key.c_str(), p.value) == 0)
+        {
+            logger.println("failed to store preferences!"); // value is still live in RAM; carry on
+        }
+        logger.print(p.key); logger.print(" = "); logger.println(p.value);
+    }
 };
+
+// Writes at most one settled pending key across props, round-robin from next.
+// commsUpdate calls it once a frame, so no frame does more than one NVS write.
+static inline bool flushOneSettledPersist(const std::vector<Property*> &props, size_t &next)
+{
+    for(size_t i = 0; i < props.size(); i++)
+    {
+        if(props[(next + i) % props.size()]->flushSettledPersist())
+        {
+            next = (next + i + 1) % props.size();
+            return true;
+        }
+    }
+    return false;
+}
 
 class GlobalPropertyBase : public Property
 {
@@ -240,12 +286,74 @@ protected:
     float _sinceStaged = kPinStatusInterval;
 };
 
+// The layer summary (docs/ble-comms.md): `layers` holds the text, which is too long
+// to notify, and this property's characteristic, `layersRevision`, notifies a counter
+// that changes with it. Never persisted.
+static const float kLayerSummaryInterval = 0.1;
+class LayerSummaryProperty : public Property
+{
+public:
+    LayerSummaryProperty(const char *revisionUuid, const char *summaryUuid)
+      : Property(revisionUuid, "layersRevision", BLERead | BLENotify, 20),
+        summary(summaryUuid, BLERead, kLayerSummaryMaxBytes),
+        summaryNameDescriptor(kDescriptorUserDesc, "layers")
+    {
+        summary.addDescriptor(summaryNameDescriptor);
+    }
+    virtual void advertise(BLEService &onService)
+    {
+        onService.addCharacteristic(summary);
+        Property::advertise(onService);
+    }
+    // Counts changes of the summary, wrapping at 65536.
+    uint16_t revision = 0;
+    // Formats the summary of what the strip plays at most every kLayerSummaryInterval
+    // (formatLayerSummary has the arguments); when it changed, stores it and stages
+    // the next revision for the flush limiter.
+    void offer(int preset, const ShinyLayerSettings *const layers[LAYER_COUNT], const bool gates[LAYER_COUNT], float delta)
+    {
+        if((_sinceOffer += delta) < kLayerSummaryInterval) return;
+        _sinceOffer = 0;
+        formatLayerSummary(_offered, preset, layers, gates);
+        if(strcmp(_offered.chars, _stored.chars) == 0) return;
+        _stored = _offered;
+        summary.writeValue(String(_stored.chars)); // no notify property, so no radio I/O
+        publish(String((int)++revision));
+    }
+protected:
+    virtual void handleWrite(const String &) {}
+    BLEStringCharacteristic summary;
+    BLEDescriptor summaryNameDescriptor;
+    LayerSummaryText _offered, _stored;
+    float _sinceOffer = kLayerSummaryInterval;
+};
+
+// `layerMove` (docs/ble-comms.md, The layer summary): write-only, never persisted
+// itself. Hands each valid `FROM TO` to onMove; logs and drops anything else.
+class LayerMoveProperty : public Property
+{
+public:
+    LayerMoveProperty(const char *uuid, const char *key, void (*onMove)(int from, int to))
+      : Property(uuid, key, BLEWrite), onMove(onMove)
+    {}
+protected:
+    virtual void handleWrite(const String &wire)
+    {
+        int from, to;
+        if(decodeLayerMove(wire.c_str(), from, to)) onMove(from, to);
+        else { logger.print("layerMove rejected, want \"FROM TO\" with layer indices: "); logger.println(wire); }
+    }
+    void (*onMove)(int from, int to);
+};
+
 class LayerPropertyBase : public Property
 {
 public:
     using Property::Property;
     virtual void load(int layer, int preset) = 0;
     virtual void republish() = 0;
+    // Persists each layer of the current preset whose value differs from before.
+    virtual void persistChanged(const ShinyLayerSettings before[LAYER_COUNT]) = 0;
 };
 
 // A per-layer setting: a field of ShinyLayerSettings, stored per (layer,
@@ -267,7 +375,7 @@ public:
 
     virtual void load(int layer, int preset)
     {
-        String stored = prefs.getString(layerKey(key, layer, preset).c_str(), "");
+        String stored = storedString(layerKey(key, layer, preset), "");
         T v;
         localPrefs.layers[layer].*member = (!stored.isEmpty() && C::decode(stored, v)) ? constrained(v) : defaultValue;
     }
@@ -283,6 +391,15 @@ public:
         field = constrained(value);
         persist(layerKey(key, layer, localPrefs.currentPresetIndex), C::encode(field), C::encode(defaultValue));
         if(layer == localPrefs.currentLayerIndex) republish();
+    }
+    virtual void persistChanged(const ShinyLayerSettings before[LAYER_COUNT])
+    {
+        for(int layer = 0; layer < LAYER_COUNT; layer++)
+        {
+            const T &value = localPrefs.layers[layer].*member;
+            if(value == before[layer].*member) continue;
+            persist(layerKey(key, layer, localPrefs.currentPresetIndex), C::encode(value), C::encode(defaultValue));
+        }
     }
 protected:
     T &current() { return localPrefs.layers[localPrefs.currentLayerIndex].*member; }

@@ -9,7 +9,8 @@
 * [mesh-sync.md](mesh-sync.md) — ESP-NOW sync: shared beat grid with implicit leader
   election, the preset carousel, wire formats, what's verified vs pending hardware.
 * [ble-comms.md](ble-comms.md) — the BLE property protocol: why its side effects are
-  decoupled from writes, the ArduinoBLE credit-leak wedge and local patch, watchdog.
+  decoupled from writes, the ArduinoBLE credit-leak wedge and local patch, watchdog,
+  the layer summary and layer move.
 * [wiring.md](wiring.md) — pin roles (switch, button, knob, LEDs): boards and pins,
   the `wiring` JSON, the BLE characteristics and their MTU limits, runtime semantics.
 * [rendering.md](rendering.md) — the render library in `src/render/`: the animation

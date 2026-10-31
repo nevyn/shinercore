@@ -48,3 +48,9 @@ One term per concept. Use these in code, docs, the app and commits.
 * **animation docs**: the `animationDocs` characteristic: each animation's color use
   and parameter names, built from the render library's table. See
   [ble-comms.md](ble-comms.md).
+* **layer summary**: the `layers` characteristic: every layer that the strip plays, with
+  its settings and layer gate, in one text. `layersRevision` announces its changes. See
+  [ble-comms.md](ble-comms.md).
+* **layer move**: the `layerMove` write: moves one layer of the current preset to another
+  index, shifting the layers in between. Wiring and layer gates stay on their slot. Not
+  "reorder" or "swap".

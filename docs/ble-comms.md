@@ -29,9 +29,14 @@ range, 2.4GHz contention with the ESP-NOW mesh), stock ArduinoBLE never resets
 
 1. **Decoupled projections** (StoredProperty.h): `publish()` stages only-latest;
    commsUpdate flushes at most one characteristic per 50ms, round-robin. `persist()`
-   debounces 0.5s of settle, so a drag is one flash write, not hundreds. The pending
-   NVS key is captured at set time, so a cursor move mid-debounce can't misfile it;
-   `loadLayers` flushes pending persists before reading the store back.
+   keeps one pending write per NVS key and debounces each key until its value has
+   settled for 0.5s, so a drag is one flash write, not hundreds. commsUpdate then
+   writes at most one settled key per frame, round-robin across properties, so a
+   burst of keys (a layer move settles up to 80) never stalls a frame with more than
+   one flash write. The key is captured at set time, so a cursor move mid-debounce
+   can't misfile it. Pending writes are part of the store: `loadLayers` and
+   `presetHasAnimations` read them through `storedString` instead of waiting for
+   them to land. Only the restart after a wiring change writes everything at once.
 2. **ArduinoBLE fork**: `_pendingPkt = 0` on disconnect (`EVT_DISCONN_COMPLETE`
    handler in `src/utility/HCI.cpp`). `~/Dev/Arduino/libraries/ArduinoBLE` is a git
    checkout of github.com/nevyn/ArduinoBLE, branch `shinercore` = upstream tag 1.3.6
@@ -104,3 +109,51 @@ existing key breaks older apps, which decode the whole value or nothing.
   Built from the render library's animation table ([rendering.md](rendering.md)).
   Cores without it predate it; the app then falls back to its own copy of the table.
 * `wiringDocs`: see [wiring.md](wiring.md).
+
+## The layer summary
+
+The per-layer characteristics show one layer at a time (the cursor). These show the
+whole stack, so the app can list every layer and preview the composite.
+
+* `layers` (`a988b500-1b73-48e7-b353-9612e873af48`, read): what the strip is playing
+  now, as text lines separated by `\n`. The first line says whose preset it is: `P n`
+  for the core's own preset `n`, or `M` while the mesh carousel plays a neighbor's
+  preset (during a slot change, layers cross over one at a time, and the header says
+  `M` until all of them play the core's own preset again). Then one line per layer
+  whose animation is not Nothing, bottom layer first:
+
+  ```
+  index animation blend color color2 speed tau phi beatSync gate
+  ```
+
+  `animation` and `blend` index `documentation.animations` and `documentation.blendModes`;
+  colors are six lowercase hex digits `rrggbb`; floats have at most 3 decimals with
+  trailing zeros and a trailing point dropped (`2.5`, `10`, `-0.125`); `beatSync` is
+  0 or 1; `gate` is 1 while the layer gate is open (the layer shows) and 0 while a
+  switch or button has it closed. Example: `P 1\n0 11 0 ff6400 f0ff00 6 6 4 0 1`.
+  The compact formats keep ten worst-case layers under 512 bytes (493). The values are
+  the settled targets, not the eased in-between values on the strip. The firmware
+  stores the text synchronously, as `wiring` does: a characteristic without notify
+  does no radio I/O on update. It reconciles rather than tracking triggers: every
+  100 ms it formats what the strip plays (`applyDerivedState`, from the carousel's
+  targets and the layer gates) and publishes only a changed text.
+* `layersRevision` (`9231bed4-aec8-4fa0-88be-3242e937fc0a`, read, notify): a decimal
+  counter (0-65535, wrapping). It changes whenever `layers` would read differently:
+  a layer edit from BLE, a knob or the mesh, a preset change, a layer move, a layer
+  gate opening or closing, and a carousel slot change. Changes coalesce: at most one
+  notification per 100 ms, and the settled state is always notified. The app re-reads
+  `layers` when the counter changes.
+* `layerMove` (`df64df61-5728-4e42-809f-bb7735fb30a0`, write): `FROM TO`, two layer
+  indices 0-9. Moves layer FROM of the current preset to index TO, shifting the
+  layers in between (remove, then insert). The move is one edit: it persists, reaches
+  the mesh like any other edit, and bumps `layersRevision`. A layer cursor on FROM
+  follows the layer to TO. Wiring and layer gates stay with their index, because
+  wiring names layer slots across all presets ([wiring.md](wiring.md)). Malformed or
+  out-of-range values are ignored and logged to serial.
+  The move persists only the fields whose value changed, through the persist limiter
+  above: nothing is written in the frame that applies it, and a move of ten full
+  layers lands its 80 writes one per frame, from 0.5 s after the move (about 1.8 s
+  in all at 60 fps).
+
+Cores without these characteristics predate them; the app then shows the cursor's
+layer alone.
