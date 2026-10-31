@@ -25,6 +25,9 @@ More of what people build with it: [@shiner.core](https://www.instagram.com/shin
 
 ## Setup
 
+To put the latest firmware on a core from a Mac without Arduino, use the
+[ShinerCore Flasher](flasher/README.md).
+
 Since it only runs on the M5Atom and M5AtomS3, you'll need to get one of those
 and [configure Arduino IDE for it](https://docs.m5stack.com/en/arduino/arduino_development).
 

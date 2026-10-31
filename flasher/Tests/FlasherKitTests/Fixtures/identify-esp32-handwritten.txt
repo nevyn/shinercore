@@ -1,0 +1,17 @@
+esptool v5.6.0
+Serial port /dev/cu.usbserial-5552B1C9E1:
+Connecting....
+Detecting chip type... ESP32
+Connected to ESP32 on /dev/cu.usbserial-5552B1C9E1:
+Chip type:          ESP32-PICO-D4 (revision v1.1)
+Features:           Wi-Fi, BT, Dual Core + LP Core, 240MHz, Embedded Flash, Vref calibration in eFuse, Coding Scheme None
+Crystal frequency:  40MHz
+MAC:                4C:75:25:A1:B2:C3
+
+Stub flasher running.
+Configuring flash size...
+
+Reading from 0x000100b0 [==============================] 100.0% 32B/32B [00:00]
+Read 32 bytes from 0x000100b0 in 0.0 seconds (2.1 kbit/s) to '/tmp/shinercore-fingerprint.bin'.
+
+Hard resetting via RTS pin...

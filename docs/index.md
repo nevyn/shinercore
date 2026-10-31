@@ -12,6 +12,8 @@
   decoupled from writes, the ArduinoBLE credit-leak wedge and local patch, watchdog.
 * [wiring.md](wiring.md) — pin roles (switch, button, knob, LEDs): boards and pins,
   the `wiring` JSON, the BLE characteristics and their MTU limits, runtime semantics.
+* [firmware-builds.md](firmware-builds.md) — CI, the firmware build layout and manifest,
+  the fingerprint, and why the flasher never writes a merged image.
 * [glossary.md](glossary.md) — the canonical term for each concept.
 
 The architecture brief and its invariants are in [../AGENTS.md](../AGENTS.md).
