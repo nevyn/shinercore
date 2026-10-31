@@ -1,12 +1,26 @@
-# Shinercore
+<p align="center">
+  <img src="img/banner.png" alt="ShinerCore: lights that dance to the music. Open source firmware for tiny ESP32 boards, and an app that tunes the LEDs live. Photos of Gustav Nilsson working on a light piece, and Valentina Fellina in her light-up mohawk." width="100%"><br>
+  <sub>In the photos: <a href="https://www.instagram.com/nilssonsgustav/">Gustav Nilsson</a>, who runs the Shiny Workshops with me, and <a href="https://www.instagram.com/valentinafellina/">Valentina Fellina</a>.</sub>
+</p>
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <b>1. Flash a board on your Mac</b><br><br>
+      <a href="https://github.com/nevyn/shinercore/releases/latest/download/ShinerCoreFlasher.zip"><img src="img/flasher-button.png" alt="Download ShinerCore Flasher for Mac" height="56"></a><br>
+      <sub>macOS 14 or later, board over USB · <a href="https://github.com/nevyn/shinercore/tree/main/flasher">how it works</a></sub>
+    </td>
+    <td align="center">
+      <b>2. Tune it from your phone</b><br><br>
+      <a href="https://apps.apple.com/app/shinercore-remote/id6451475618"><img src="img/remote-button.png" alt="Get ShinerCore Remote on the App Store" height="56"></a><br>
+      <sub>iPhone, iPad and Apple silicon Macs</sub>
+    </td>
+  </tr>
+</table>
 
 <p align="center">
-  <a href="https://github.com/nevyn/shinercore/releases/latest/download/ShinerCoreFlasher.zip"><img src="img/flasher-badge.svg" alt="Download ShinerCore Flasher for Mac" height="56"></a>
-  &nbsp;&nbsp;
-  <a href="https://apps.apple.com/app/shinercore-remote/id6451475618"><img src="img/app-store-badge.svg" alt="Download ShinerCore Remote on the App Store" height="56"></a>
-</p>
-<p align="center">
-  Put ShinerCore on a board with <a href="flasher/">the Flasher</a>, then control the lights from your iPhone, iPad or Mac with ShinerCore Remote.
+  <b><a href="https://nevyn.dev/shinercore/">nevyn.dev/shinercore</a></b> has what you need and how to start.
+  Photos of what people build: <a href="https://www.instagram.com/shiner.core/">@shiner.core</a>.
 </p>
 
 ShinerCore is an open source firmware/Arduino sketch for ESP32 controllers
@@ -27,10 +41,6 @@ beats per cycle instead of seconds per cycle. Cores within earshot of each other
 a single beat grid over ESP-NOW — whoever hears the music most confidently leads — and
 walk through their presets together, so a whole camp pulses in time. Pulsing in each
 *others'* colors is still to come.
-
-<img src="img/jacket.webp" height="300"> <img src="img/ceiling.webp" height="300"> <img src="img/festival.webp" height="300">
-
-More of what people build with it: [@shiner.core](https://www.instagram.com/shiner.core/).
 
 ## Setup
 
@@ -100,5 +110,5 @@ data more times than that — strips in parallel on one line, a Y-fork — draws
 multiple of the estimate, so divide your pack's rating by the copy count.
 
 ## Resources
-* [What ShinerCore is for](https://nevyn.dev/wiki/portfolio/shinercore/), in prose
+* [nevyn.dev/shinercore](https://nevyn.dev/shinercore/), the home page: what ShinerCore is for, and how to get started
 * [Bluetooth assigned numbers](https://btprodspecificationrefs.blob.core.windows.net/assigned-numbers/Assigned%20Number%20Types/Assigned_Numbers.pdf)
