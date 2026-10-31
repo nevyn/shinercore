@@ -110,14 +110,17 @@ public struct GitHubCatalog: FirmwareSource {
             var entries: [CacheEntry] = []
             for release in releases where release.tag_name.hasPrefix("firmware-") && !release.draft {
                 let assets = Dictionary(release.assets.map { ($0.name, $0.browser_download_url) }, uniquingKeysWith: { a, _ in a })
-                if let known = cached?.entries.first(where: { $0.tag == release.tag_name }) {
-                    entries.append(CacheEntry(tag: known.tag, build: known.build, assets: assets))
+                // A CI re-run replaces the assets, so a cached manifest is only good while its asset is unchanged.
+                let manifestUpdatedAt = release.assets.first { $0.name == "manifest.json" }?.updated_at
+                if let known = cached?.entries.first(where: { $0.tag == release.tag_name }),
+                   manifestUpdatedAt != nil, known.manifestUpdatedAt == manifestUpdatedAt {
+                    entries.append(CacheEntry(tag: known.tag, build: known.build, assets: assets, manifestUpdatedAt: manifestUpdatedAt))
                     continue
                 }
                 // One unreadable release must not hide the others.
                 guard let manifestURL = assets["manifest.json"],
                       let build = try? FirmwareBuild.decode(try await http.get(manifestURL)) else { continue }
-                entries.append(CacheEntry(tag: release.tag_name, build: build, assets: assets))
+                entries.append(CacheEntry(tag: release.tag_name, build: build, assets: assets, manifestUpdatedAt: manifestUpdatedAt))
             }
             entries.sort { $0.build.date > $1.build.date }
             let checkedAt = now()
@@ -184,12 +187,14 @@ public struct GitHubCatalog: FirmwareSource {
         var tag: String
         var build: FirmwareBuild
         var assets: [String: URL]
+        var manifestUpdatedAt: String?
     }
 
     private struct GitHubRelease: Decodable {
         struct Asset: Decodable {
             var name: String
             var browser_download_url: URL
+            var updated_at: String?
         }
         var tag_name: String
         var prerelease: Bool

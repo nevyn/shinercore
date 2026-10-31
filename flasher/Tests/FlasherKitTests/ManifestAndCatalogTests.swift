@@ -28,10 +28,12 @@ import Testing
     let older = Fixture.olderBuild(commit: "aaaaaaa0000000000000000000000000000000000", daysEarlier: 3)
     let asset = URL(string: "https://example.test/assets")!
 
-    func release(_ tag: String, prerelease: Bool = true, draft: Bool = false, assets: [String] = []) -> [String: Any] {
+    func release(_ tag: String, prerelease: Bool = true, draft: Bool = false, assets: [String] = [],
+                 updatedAt: String = "2026-10-31T18:00:00Z") -> [String: Any] {
         ["tag_name": tag, "prerelease": prerelease, "draft": draft,
          "html_url": "https://github.com/nevyn/shinercore/releases/tag/\(tag)",
-         "assets": assets.map { ["name": $0, "browser_download_url": asset.appending(path: "\(tag)/\($0)").absoluteString] }]
+         "assets": assets.map { ["name": $0, "browser_download_url": asset.appending(path: "\(tag)/\($0)").absoluteString,
+                                 "updated_at": updatedAt] }]
     }
 
     func http(latestRelease: [String: Any]? = nil) throws -> FakeHTTP {
@@ -99,6 +101,20 @@ import Testing
         #expect(offline.builds.map(\.shortCommit) == ["1ac850e", "aaaaaaa"])
         guard case .offline(let cachedAt, _) = offline.freshness else { Issue.record("expected offline"); return }
         #expect(cachedAt != nil)
+    }
+
+    @Test func refetchesAManifestThatACIRerunReplaced() async throws {
+        let cache = temporaryDirectory()
+        let http = try http()
+        _ = await GitHubCatalog(http: http, cacheDirectory: cache, currentVersion: "0.1.0").refresh()
+
+        let rebuilt = Fixture.olderBuild(commit: older.commit, daysEarlier: 2)
+        http.set(GitHubCatalog.releasesURL, try JSONSerialization.data(withJSONObject: [
+            release("firmware-aaaaaaa", assets: ["manifest.json"], updatedAt: "2026-11-01T09:00:00Z"),
+        ]))
+        http.set(asset.appending(path: "firmware-aaaaaaa/manifest.json"), try JSONEncoder.manifest.encode(rebuilt))
+        let snapshot = await GitHubCatalog(http: http, cacheDirectory: cache, currentVersion: "0.1.0").refresh()
+        #expect(snapshot.builds.map(\.date) == [rebuilt.date])
     }
 
     @Test func offlineWithoutCacheSaysSo() async throws {
