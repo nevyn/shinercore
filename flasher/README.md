@@ -3,6 +3,8 @@
 A Mac app that puts the latest ShinerCore firmware on a core, keeping its presets,
 wiring and settings.
 
+<img src="img/plugged-in-cores.png" alt="ShinerCore Flasher showing an M5AtomS3 Lite with ShinerCore up to date" width="520">
+
 ## Flashing a core
 
 1. Download [ShinerCoreFlasher.zip](https://github.com/nevyn/shinercore/releases/latest/download/ShinerCoreFlasher.zip),
