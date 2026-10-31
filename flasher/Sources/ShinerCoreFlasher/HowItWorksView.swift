@@ -28,9 +28,10 @@ enum BoardShop {
 
 enum Links {
     static let remote = URL(string: "https://apps.apple.com/app/shinercore-remote/id6451475618")!
+    static let home = URL(string: "https://nevyn.dev/shinercore/")!
 }
 
-/// The three steps from a bare board to lights: get a board, get the Remote, add LEDs.
+/// The three steps from a bare board to lights (get a board, get the Remote, add LEDs), and a link to the home page.
 struct HowItWorksSteps: View {
     let boards: [(id: String, name: String)]
 
@@ -58,6 +59,10 @@ struct HowItWorksSteps: View {
             Step(number: 3, symbol: "light.strip.2", title: "Add LEDs") {
                 Text("Any WS2812-compatible LED strip works; they're also sold as NeoPixel. Connect it the way the Wiring tab in ShinerCore Remote shows.")
             }
+            Link("More about ShinerCore, with photos of what people build, at nevyn.dev/shinercore", destination: Links.home)
+                .font(.footnote)
+                .foregroundStyle(Theme.accent)
+                .padding(.horizontal, 4)
         }
     }
 
