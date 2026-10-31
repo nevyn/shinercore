@@ -67,6 +67,24 @@ screen -S shinerserial -X quit        # releases the port for flashing
 
 `-X hardcopy` only dumps one screenful; use logging for anything longitudinal.
 
+`screen` attaches after the boot lines have gone by. A boot prints every loaded setting
+(`name := ...`); to see one, `test/bootlog.py PORT SECONDS OUTFILE` resets the core
+through RTS and logs from the ROM banner on. It needs only the Python standard library
+and works on the CH552 bridges and the AtomS3's USB-JTAG port. The log starts with NUL
+bytes from the reset; `tr -d '\000'` strips them.
+
+Before flashing a core whose firmware you don't know, back up the whole flash: the app
+image on the core is the only copy of that firmware. `$T` is set as in the core dump
+section below.
+
+```
+$T/esptool_py/4.5.1/esptool --chip esp32 --port /dev/cu.usbserial-XXX --baud 115200 \
+    read_flash 0 0x400000 full-flash.bin   # Atom/Echo, ~6 min; AtomS3: esp32s3, 0x800000
+```
+
+An upload keeps NVS (the settings) when the core's partition table matches the build's.
+Compare the table at 0x8000 with `<build-path>/shinercore.ino.partitions.bin` first.
+
 ## Building from a worktree
 
 arduino-cli requires the sketch directory to be named `shinercore`, which a worktree
