@@ -59,7 +59,7 @@ final class FlasherModel {
         Task {
             let snapshot = await source.refresh()
             catalog = snapshot
-            for session in sessions.values { session.rejudge(in: snapshot.builds) }
+            for session in sessions.values { session.rejudge() }
             guard case .online = snapshot.freshness, let latest = snapshot.latest else { return }
             do {
                 try await source.cacheAllBoards(of: latest)

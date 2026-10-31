@@ -111,6 +111,22 @@ enum States {
         #expect(model.path.isEmpty)
     }
 
+    @Test func judgesTheFingerprintAgainWhenTheCatalogArrivesLate() async throws {
+        let memory = InMemoryBoardMemory()
+        let runner = ReplayRunner([.init(transcript: Fixture.text("identify-shinercore-s3.txt"), fingerprint: Data(hexString: States.s3Board.elfSha256))])
+        let model = States.model(runner: runner, memory: memory)
+        let catalog = model.catalog
+        model.catalog = nil
+        model.devicesChanged([States.s3Port])
+        let session = try #require(model.sessions[States.s3Port.path])
+        while session.isBusy { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(session.summary == "Something else is installed")
+        model.catalog = catalog
+        session.rejudge()
+        #expect(session.summary == "ShinerCore, up to date")
+        #expect(memory.boards["e8:f6:0a:98:1d:d8"] == "atoms3-lite")
+    }
+
     @Test func esp32NeedsABoardChoiceAndRemembersIt() throws {
         let memory = InMemoryBoardMemory()
         let model = States.model(memory: memory)

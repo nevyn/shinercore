@@ -1,6 +1,9 @@
 import FlasherKit
 import Foundation
 import Observation
+import os
+
+private let logger = Logger(subsystem: "dev.nevyn.ShinerCoreFlasher", category: "core")
 
 /// One plugged-in serial device and what the flasher knows and does with it. One operation runs at a time.
 @MainActor @Observable
@@ -145,6 +148,7 @@ final class CoreSession: Identifiable {
                 session.identified(try await session.app.flasher.identify(port: session.device.path, builds: session.app.builds,
                                                                            onLine: session.logLine))
             } catch let error as OperationError {
+                logger.error("\(error.localizedDescription, privacy: .public)\n\(error.transcript, privacy: .public)")
                 session.core = .failed(error)
                 session.failure = Failure(title: "Couldn't check this core.", hint: error.failure.message(port: error.port), details: error.transcript)
             } catch {
@@ -153,8 +157,9 @@ final class CoreSession: Identifiable {
         }
     }
 
-    func rejudge(in builds: [FirmwareBuild]) {
-        if let identity { core = .identified(CoreIdentity(chip: identity.chip, status: identity.status.rejudged(in: builds))) }
+    /// Judges the fingerprint again, against firmware builds that arrived after identifying.
+    func rejudge() {
+        if let identity { identified(identity) }
     }
 
     func chooseBoard(_ id: String) {
@@ -195,6 +200,7 @@ final class CoreSession: Identifiable {
                     onProgress: { value in DispatchQueue.main.async { session.setProgress(value) } },
                     onRetry: { baud in DispatchQueue.main.async { session.retrying(baud: baud) } })
             } catch let error as OperationError {
+                logger.error("\(error.localizedDescription, privacy: .public)\n\(error.transcript, privacy: .public)")
                 session.failure = Failure(title: "Installing didn't work.", hint: error.failure.message(port: port), details: error.transcript)
                 return
             } catch is CancellationError {
@@ -226,8 +232,11 @@ final class CoreSession: Identifiable {
 
     func cancel() { task?.cancel() }
 
-    private func identified(_ identity: CoreIdentity) {
+    private func identified(_ found: CoreIdentity) {
+        // The catalog may have loaded while esptool ran.
+        let identity = CoreIdentity(chip: found.chip, status: found.status.rejudged(in: app.builds))
         core = .identified(identity)
+        logger.info("\(self.device.path, privacy: .public): \(identity.chip.description, privacy: .public) \(identity.chip.mac, privacy: .public), \(self.summary, privacy: .public)")
         if let board = identity.status.board { app.memory.remember(board: board.id, forMAC: identity.chip.mac) }
     }
 
