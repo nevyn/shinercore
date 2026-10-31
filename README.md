@@ -1,5 +1,14 @@
 # Shinercore
 
+<p align="center">
+  <a href="https://github.com/nevyn/shinercore/releases/latest/download/ShinerCoreFlasher.zip"><img src="img/flasher-badge.svg" alt="Download ShinerCore Flasher for Mac" height="56"></a>
+  &nbsp;&nbsp;
+  <a href="https://apps.apple.com/app/shinercore-remote/id6451475618"><img src="img/app-store-badge.svg" alt="Download ShinerCore Remote on the App Store" height="56"></a>
+</p>
+<p align="center">
+  Put ShinerCore on a board with <a href="flasher/">the Flasher</a>, then control the lights from your iPhone, iPad or Mac with ShinerCore Remote.
+</p>
+
 ShinerCore is an open source firmware/Arduino sketch for ESP32 controllers
 to make pretty animations on addressable RGB LED strips (such as NeoPixel strips).
 It's hard-coded to work well with M5Stack's M5AtomS3 modules, which are very small
