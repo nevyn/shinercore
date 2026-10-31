@@ -31,7 +31,7 @@ const BoardSpec kAtomS3Lite = {
     {},
 };
 // No wiring pins: its two LED outputs stay fixed.
-const BoardSpec kStickC = {"m5stickc", 0, {}, {}, "G37", 0, 0, 0, 0, {}};
+const BoardSpec kStickC = {"stickc-plus", 0, {}, {}, "G37", 0, 0, 0, 0, {}};
 
 int BoardSpec::indexOf(const char *label) const
 {

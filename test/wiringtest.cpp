@@ -170,6 +170,9 @@ int main() {
            "\"color2.h\",\"color2.s\",\"color2.v\"]}");
     check("atoms3-lite fits the characteristic", wiringDocsJSON(kAtomS3Lite).length() <= 512);
     check("atoms3-lite has no claims", strstr(wiringDocsJSON(kAtomS3Lite).c_str(), "\"claims\":{}") != nullptr);
+    check("stickc-plus has no pins, under its build id",
+          strstr(wiringDocsJSON(kStickC).c_str(),
+                 "{\"board\":\"stickc-plus\",\"pins\":[],\"frontButton\":\"G37\",\"analog\":[],\"led\":[],\"claims\":{},") != nullptr);
 
     printf("knob curves\n");
     check("brightness 0", near(knobValue(KnobBrightness, 0, 255, 0), 0));
