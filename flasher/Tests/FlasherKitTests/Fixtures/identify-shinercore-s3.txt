@@ -1,0 +1,20 @@
+esptool v5.6.0
+Serial port /dev/cu.usbmodem1401:
+Connecting...
+Detecting chip type... ESP32-S3
+Connected to ESP32-S3 on /dev/cu.usbmodem1401:
+Chip type:          ESP32-S3 (QFN56) (revision v0.2)
+Features:           Wi-Fi, BT 5 (LE), Dual Core + LP Core, 240MHz, Embedded Flash 8MB (XMC)
+Crystal frequency:  40MHz
+USB mode:           USB-Serial/JTAG
+MAC:                e8:f6:0a:98:1d:d8
+
+Uploading stub flasher...
+Running stub flasher...
+Stub flasher running.
+
+Configuring flash size...
+Reading from 0x000100d0 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100.0% 32B/32B [0s] 
+Read 32 bytes from 0x000100b0 in 0.0 seconds (383.3 kbit/s) to 'fp2.bin'.
+
+Hard resetting via RTS pin...

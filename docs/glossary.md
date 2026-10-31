@@ -2,6 +2,16 @@
 
 One term per concept. Use these in code, docs, the app and commits.
 
+* **core**: one ShinerCore device: a board running this firmware.
+* **board**: the M5Stack model that a core runs on, named by its id in
+  [firmware-builds.md](firmware-builds.md) (`atom-echo`). Not "variant", "device type"
+  or "target".
+* **firmware build**: the flash pieces for every board built from one commit, plus their
+  manifest, published as a `firmware-<commit>` release. Not "artifact" or "version".
+* **fingerprint**: the ELF SHA-256 in a core's app image, which names the firmware build
+  that it runs. Not "hash" or "version".
+* **flasher**: the Mac app in `flasher/` that flashes firmware builds onto cores. Not
+  "updater" or "installer".
 * **wiring**: a core's map from pin to role, edited on the app's Wiring tab and stored
   as one setting. See [wiring.md](wiring.md).
 * **pin**: a user-reachable connection, named by the label printed on the case

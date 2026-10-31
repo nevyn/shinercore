@@ -1,0 +1,6 @@
+esptool v5.6.0
+Serial port /dev/cu.usbserial-5552B1C9E1:
+Connecting......................................
+
+A fatal error occurred: Failed to connect to ESP32: No serial data received.
+For troubleshooting steps visit: https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html

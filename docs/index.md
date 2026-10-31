@@ -15,6 +15,8 @@
 * [rendering.md](rendering.md) — the render library in `src/render/`: the animation
   table, the C API and SwiftPM package that the Remote app draws its strip preview
   with, host fidelity, golden frames, adding an animation.
+* [firmware-builds.md](firmware-builds.md) — CI, the firmware build layout and manifest,
+  the fingerprint, and why the flasher never writes a merged image.
 * [glossary.md](glossary.md) — the canonical term for each concept.
 
 The architecture brief and its invariants are in [../AGENTS.md](../AGENTS.md).
