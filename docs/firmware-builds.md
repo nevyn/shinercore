@@ -61,8 +61,8 @@ into its bootloader, so its lights go dark for a few seconds.
 The flasher writes each part at its own offset, like `arduino-cli upload`, and never a
 merged image. `esptool merge_bin` fills the gaps between pieces with `0xFF`, and NVS
 (`0x9000`–`0xe000`) lies in the gap between the partition table and `boot_app0`: a merged
-image erases every preset, wiring and setting. The flasher's factory reset runs
-`erase-flash` first, on purpose.
+image erases every preset, wiring and setting. The flasher's factory reset adds
+`--erase-all` to `write-flash`, which erases the whole flash first, on purpose.
 
 ## Flasher releases
 
