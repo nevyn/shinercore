@@ -56,6 +56,7 @@ python3 -I - "$out" "$work" "$table" \
 import hashlib, json, os, sys
 out, work, table, commit, date, subject = sys.argv[1:]
 ELF_SHA_OFFSET = 0xb0  # platform.txt: elf2image --elf-sha256-offset 0xb0
+MARKER_OFFSET = 0x120  # FirmwareMarker.h: right after esp_app_desc_t
 
 def sha(path):
     return hashlib.sha256(open(path, "rb").read()).hexdigest()
@@ -68,6 +69,9 @@ for line in open(table):
     embedded = app[ELF_SHA_OFFSET:ELF_SHA_OFFSET + 32].hex()
     if embedded != elf_sha:
         sys.exit(f"{id}: app image carries ELF SHA {embedded} at {ELF_SHA_OFFSET:#x}, expected {elf_sha}")
+    marker = app[MARKER_OFFSET:MARKER_OFFSET + 32]
+    if marker[:16].rstrip(b"\0") != b"ShinerCore/1" or marker[16:].rstrip(b"\0").decode() != id:
+        sys.exit(f"{id}: app image carries {marker!r} at {MARKER_OFFSET:#x}, expected the ShinerCore/1 marker for {id}")
     parts = []
     for offset, piece in [(int(bootloader, 0), "bootloader"), (0x8000, "partitions"),
                           (0xe000, "boot_app0"), (0x10000, "app")]:
