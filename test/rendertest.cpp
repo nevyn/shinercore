@@ -3,6 +3,7 @@
 #include "FastLED.h"
 #include "../ShinyTypes.h"
 #include "../src/render/include/ShinerRender.h"
+#include <math.h>
 #include <string.h>
 
 struct GoldenFrame {
@@ -114,6 +115,69 @@ int main(int argc, char **argv)
             failures++;
         }
         printf("  %s %d of %d frames match\n", matched == total ? "ok  " : "FAIL", matched, total);
+    }
+
+    printf("C API\n");
+    {
+        check("counts", shiner_animation_count() == AnimationCount && shiner_blend_mode_count() == BlendModeCount);
+        check("names", same(shiner_animation_name(6), "Comet") && same(shiner_blend_mode_name(13), "Color Dodge"));
+        check("out-of-range names are NULL", !shiner_animation_name(-1) && !shiner_animation_name(14) &&
+              !shiner_blend_mode_name(-1) && !shiner_blend_mode_name(14));
+        check("colors", shiner_animation_colors(5) == 0 && shiner_animation_colors(13) == 1 && shiner_animation_colors(6) == 2 &&
+              shiner_animation_colors(-1) == 0 && shiner_animation_colors(14) == 0);
+        check("parameter names", same(shiner_animation_parameter(6, 0), "Tail length") && same(shiner_animation_parameter(6, 1), "Head width"));
+        check("ignored parameters are NULL", !shiner_animation_parameter(0, 0) && !shiner_animation_parameter(4, 1) &&
+              !shiner_animation_parameter(10, 1) && same(shiner_animation_parameter(10, 0), "Wipe time"));
+        check("out-of-range parameter names are NULL", !shiner_animation_parameter(6, 2) && !shiner_animation_parameter(6, -1) &&
+              !shiner_animation_parameter(14, 0) && !shiner_animation_parameter(-1, 0));
+
+        int matched = 0, total = sizeof kGoldenFrames / sizeof *kGoldenFrames;
+        for(const GoldenFrame &g : kGoldenFrames)
+        {
+            ShinerRGB out[kGoldenPixels];
+            random16_set_seed(1337);
+            shiner_render(g.layers, g.layerCount, g.beat, out, kGoldenPixels);
+            CRGB frame[kGoldenPixels];
+            for(int i = 0; i < kGoldenPixels; i++) frame[i] = rgb(out[i]);
+            std::string got = hex(frame, kGoldenPixels);
+            if(got == g.pixels) { matched++; continue; }
+            printf("  FAIL %s\n    want %s\n    got  %s\n", g.name, g.pixels, got.c_str());
+            failures++;
+        }
+        printf("  %s %d of %d golden frames match\n", matched == total ? "ok  " : "FAIL", matched, total);
+
+        const ShinerRGB red = {255, 0, 0}, green = {0, 255, 0};
+        ShinerLayer base = {1, BlendModeAdd, red, red, 10, 4, 0, 1};
+        ShinerLayer top = {1, BlendModeSet, green, green, 10, 4, 0, 1};
+        auto render = [&](ShinerLayer t) {
+            ShinerLayer ls[2] = {base, t};
+            ShinerRGB out[3];
+            shiner_render(ls, 2, 0, out, 3);
+            return rgb(out[1]);
+        };
+        ShinerLayer l = top; l.animation = 14;
+        check("out-of-range animation renders black", render(l) == CRGB(0, 0, 0));
+        l.animation = -1;
+        check("negative animation renders black", render(l) == CRGB(0, 0, 0));
+        l = top; l.animation = 0;
+        check("Nothing skips the layer", render(l) == CRGB(255, 0, 0));
+        l = top; l.blendMode = 99;
+        check("out-of-range blend acts as Add", render(l) == CRGB(255, 255, 0));
+        l.blendMode = -1;
+        check("negative blend acts as Add", render(l) == CRGB(255, 255, 0));
+        l = top; l.gain = 0;
+        check("gain 0 leaves the output untouched", render(l) == CRGB(255, 0, 0));
+        l.gain = 2;
+        check("gain above 1 is 1", render(l) == CRGB(0, 255, 0));
+        l.gain = NAN;
+        check("NaN gain is 0", render(l) == CRGB(255, 0, 0));
+        ShinerRGB untouched = {1, 2, 3};
+        shiner_render(&base, 1, 0, &untouched, 0);
+        shiner_render(&base, 1, 0, NULL, 3);
+        check("no pixels, no writes", untouched.r == 1 && untouched.g == 2 && untouched.b == 3);
+        ShinerRGB dark = {9, 9, 9};
+        shiner_render(NULL, 3, 0, &dark, 1);
+        check("no layers is black", dark.r == 0 && dark.g == 0 && dark.b == 0);
     }
 
     printf("device number semantics\n");
