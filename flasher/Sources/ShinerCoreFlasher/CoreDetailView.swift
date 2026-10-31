@@ -54,7 +54,7 @@ struct CoreDetailContent: View {
     private var statusLine: String {
         switch session.primary {
         case .working: return session.identity == nil ? "Checking restarts the core, so its lights go dark for a moment." : summary
-        case .installed: return "ShinerCore is installed. Unplug the core and open ShinerCore Remote to light it up."
+        case .installed: return "ShinerCore is installed. Unplug the core and open ShinerCore Remote: it shows you how to connect an LED strip, and then lights it up."
         case .check: return session.failure == nil ? "Check this core to see what's on it. That restarts it, so its lights go dark for a moment." : "Couldn't check this core."
         case .chooseBoard: return "Which model is it? Choose the name printed on the case."
         case .install, .update, .upToDate: return summary

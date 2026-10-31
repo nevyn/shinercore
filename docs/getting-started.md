@@ -1,10 +1,11 @@
 # Getting started: the story both apps tell
 
-A newcomer meets ShinerCore through three places: the home page
-(https://nevyn.dev/shinercore), ShinerCore Flasher (Mac) and ShinerCore Remote (iPhone,
-iPad, Mac). They tell one story in the same four steps, with the same names. Each app
-tells its own steps in full and points to the other for the rest, so nothing is
-explained twice or contradicted.
+A newcomer meets ShinerCore through the home page (https://nevyn.dev/shinercore), the
+READMEs, ShinerCore Flasher (Mac) and ShinerCore Remote (iPhone, iPad, Mac). They tell one
+story in the same four steps, with the same names. The home page and the READMEs group
+the steps into two calls to action: **Flash a board on your Mac** (steps 1-2) and **Tune
+it from your phone** (steps 3-4). Each app tells its own steps in full and points to the
+other for the rest, so nothing is explained twice or contradicted.
 
 | # | Step | Told in full by | The other app says |
 |---|------|-----------------|--------------------|

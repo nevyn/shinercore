@@ -31,14 +31,14 @@ enum Links {
     static let home = URL(string: "https://nevyn.dev/shinercore/")!
 }
 
-/// The three steps from a bare board to lights (get a board, get the Remote, add LEDs), and a link to the home page.
+/// The four steps from a bare board to lights, as docs/getting-started.md tells them, and a link to the home page.
 struct HowItWorksSteps: View {
     let boards: [(id: String, name: String)]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Step(number: 1, symbol: "cpu", title: "Get a compatible board") {
-                Text("ShinerCore runs on these small boards from M5Stack. Plug one into this Mac, and this app puts ShinerCore on it.")
+            Step(number: 1, symbol: "cpu", title: "Get a board") {
+                Text("ShinerCore runs on these small boards from M5Stack.")
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(boards, id: \.id) { board in
                         if let entry = BoardShop.entry(for: board.id) {
@@ -52,12 +52,15 @@ struct HowItWorksSteps: View {
                     }
                 }
             }
-            Step(number: 2, symbol: "iphone", title: "Get ShinerCore Remote") {
-                Text("Control the lights from your iPhone, iPad or Mac.")
-                Link("ShinerCore Remote on the App Store", destination: Links.remote)
+            Step(number: 2, symbol: "arrow.down.circle", title: "Put ShinerCore on it") {
+                Text("Plug the board into this Mac with a USB data cable, and pick it in the list. This app does the rest.")
             }
-            Step(number: 3, symbol: "light.strip.2", title: "Add LEDs") {
-                Text("Any WS2812-compatible LED strip works; they're also sold as NeoPixel. Connect it the way the Wiring tab in ShinerCore Remote shows.")
+            Step(number: 3, symbol: "light.strip.2", title: "Connect an LED strip") {
+                Text("Any WS2812-compatible strip works; they're also sold as NeoPixel. ShinerCore Remote shows you how, step by step.")
+            }
+            Step(number: 4, symbol: "iphone", title: "Play") {
+                Text("Open ShinerCore Remote on your iPhone, iPad or Mac, find your core and light it up.")
+                Link("ShinerCore Remote on the App Store", destination: Links.remote)
             }
             Link("More about ShinerCore, with photos of what people build, at nevyn.dev/shinercore", destination: Links.home)
                 .font(.footnote)
