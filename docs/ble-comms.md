@@ -113,7 +113,9 @@ whole stack, so the app can list every layer and preview the composite.
 * `layers` (`a988b500-1b73-48e7-b353-9612e873af48`, read): what the strip is playing
   now, as text lines separated by `\n`. The first line says whose preset it is: `P n`
   for the core's own preset `n`, or `M` while the mesh carousel plays a neighbor's
-  preset. Then one line per layer whose animation is not Nothing, bottom layer first:
+  preset (during a slot change, layers cross over one at a time, and the header says
+  `M` until all of them play the core's own preset again). Then one line per layer
+  whose animation is not Nothing, bottom layer first:
 
   ```
   index animation blend color color2 speed tau phi beatSync gate
@@ -124,8 +126,12 @@ whole stack, so the app can list every layer and preview the composite.
   trailing zeros and a trailing point dropped (`2.5`, `10`, `-0.125`); `beatSync` is
   0 or 1; `gate` is 1 while the layer gate is open (the layer shows) and 0 while a
   switch or button has it closed. Example: `P 1\n0 11 0 ff6400 f0ff00 6 6 4 0 1`.
-  The compact formats keep ten worst-case layers under 512 bytes (494). The values are
-  the settled targets, not the eased in-between values on the strip.
+  The compact formats keep ten worst-case layers under 512 bytes (493). The values are
+  the settled targets, not the eased in-between values on the strip. The firmware
+  stores the text synchronously, as `wiring` does: a characteristic without notify
+  does no radio I/O on update. It reconciles rather than tracking triggers: every
+  100 ms it formats what the strip plays (`applyDerivedState`, from the carousel's
+  targets and the layer gates) and publishes only a changed text.
 * `layersRevision` (`9231bed4-aec8-4fa0-88be-3242e937fc0a`, read, notify): a decimal
   counter (0-65535, wrapping). It changes whenever `layers` would read differently:
   a layer edit from BLE, a knob or the mesh, a preset change, a layer move, a layer
@@ -138,7 +144,11 @@ whole stack, so the app can list every layer and preview the composite.
   the mesh like any other edit, and bumps `layersRevision`. A layer cursor on FROM
   follows the layer to TO. Wiring and layer gates stay with their index, because
   wiring names layer slots across all presets ([wiring.md](wiring.md)). Malformed or
-  out-of-range values are ignored.
+  out-of-range values are ignored and logged to serial.
+  The move persists only the fields whose value changed. Each property holds one
+  pending NVS write, so all but the last changed layer of each property are written
+  synchronously in the frame that applies the move: a few writes for a typical stack,
+  at most 72 for ten full layers. A move is a single write per drag, not a stream.
 
 Cores without these characteristics predate them; the app then shows the cursor's
 layer alone.

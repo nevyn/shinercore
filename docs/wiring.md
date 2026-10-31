@@ -165,6 +165,10 @@ BLE. A gate fades its layer in and out with the settings ease ([transitions.md](
 layer composites as `blend(under, blendMode(under, layer), gain)`. A switch on a layer
 overrides any button toggle of the same layer.
 
+**A layer move leaves wiring and layer gates on their slot** ([ble-comms.md](ble-comms.md),
+The layer summary): a switch on layer 3 controls whichever layer sits at index 3 after
+the move, and so does a knob that targets layer 3.
+
 **Knobs write the target setting** through the same path as an app write, so the value
 persists, notifies, and reaches the mesh like any edit. Layer targets address layer
 *N* of the current preset, independent of the BLE layer cursor.

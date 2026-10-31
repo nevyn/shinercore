@@ -75,7 +75,8 @@ firmware property (Comms.h) + a PropertyKey in CoreProps (ShinerCoreKit,
 Model/PropertyKey.swift) + a control box in the app's tab views + if enum-valued, the
 documentation characteristic JSON. The app subscribes to notifications; every settled
 value reaches it only because publish() is the sole change path — keep it that way.
-`wiring` is too long to notify; its changes are signalled by the revision in `pinStatus`.
+`wiring` is too long to notify; its changes are signalled by the revision in `pinStatus`,
+and `layers` changes by `layersRevision`.
 (Notifies are only-latest and rate-limited; intermediate values may never be sent.)
 
 ## OverAnimate
