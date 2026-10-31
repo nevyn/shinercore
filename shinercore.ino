@@ -9,7 +9,6 @@
 #include "Util.h"
 #include "BeatDetector.h"
 #include "LayerAnimation.h"
-#include "Animations.h"
 #include "ShinyTypes.h"
 #include "Transition.h"
 

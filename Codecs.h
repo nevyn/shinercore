@@ -92,7 +92,6 @@ template<> struct Codec<LedColorOrder> {
 };
 
 // The animation is an index in ShinyLayerSettings, but names on the wire
-extern std::vector<String> animationNames;
 struct AnimationCodec {
     static bool decode(const String &s, int &out) { return decodeNamed(animationNames, s, out); }
     static String encode(int v) { return animationNames[v]; }
