@@ -23,6 +23,7 @@ work=$(mktemp -d "${TMPDIR:-/tmp}/shinerbuild.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 mkdir "$work/shinercore"
 for f in "$repo"/*.ino "$repo"/*.h "$repo"/*.cpp; do ln -s "$f" "$work/shinercore/"; done
+ln -s "$repo/src" "$work/shinercore/src"  # the render library; arduino-cli compiles src/ recursively
 
 table="$work/boards.tsv"
 : > "$table"
