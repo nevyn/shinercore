@@ -20,7 +20,7 @@ enum States {
     static let builds = [latest] + (1...3).map { Fixture.olderBuild(commit: "\($0)\($0)\($0)\($0)\($0)\($0)\($0)000000000000000000000000000000000", daysEarlier: Double($0)) }
     static let s3Port = SerialDevice(path: "/dev/cu.usbmodem1101", vendorID: 0x303A, productID: 0x1001, productName: "M5STACK_ATOMS3", serialNumber: "DC5475C8E944")
     static let atomPort = SerialDevice(path: "/dev/cu.usbserial-5552B1C9E1", vendorID: 0x1A86, productID: 0x55D4, productName: "USB Single Serial")
-    static let s3Chip = ChipInfo(chip: "esp32s3", description: "ESP32-S3 (QFN56) (revision v0.2)", mac: "dc:54:75:c8:e9:44")
+    static let s3Chip = ChipInfo(chip: "esp32s3", description: "ESP32-S3 (QFN56) (revision v0.2)", mac: "e8:f6:0a:98:1d:d8")
     static let atomChip = ChipInfo(chip: "esp32", description: "ESP32-PICO-D4 (revision v1.1)", mac: "4c:75:25:a1:b2:c3")
 
     @MainActor static func model(freshness: Freshness = .online(checkedAt: now.addingTimeInterval(-120)), update: FlasherRelease? = nil,
@@ -59,7 +59,7 @@ enum States {
         flashing.log = ["Writing at 0x0004a000 [============>                 ]  40.0% 254.00kB/634.77kB [00:03] "]
 
         let failure = identified(s3Chip, .known(build: builds[2], board: s3Board, buildsBehind: 2))
-        let error = OperationError(step: .flash, port: s3Port.path, failure: .portBusy, transcript: Fixture.text("failure-port-busy.txt"))
+        let error = OperationError(step: .flash, port: s3Port.path, failure: .portBusy, transcript: Fixture.text("failure-port-busy-handwritten.txt"))
         failure.failure = .init(message: error.localizedDescription, details: error.transcript)
 
         let offline = identified(s3Chip, .known(build: latest, board: s3Board, buildsBehind: 0))
@@ -114,8 +114,8 @@ enum States {
     @Test func flashesThenVerifiesByIdentifyingAgain() async throws {
         let s3 = try #require(States.latest.board(id: "atoms3-lite"))
         let runner = ReplayRunner([
-            .init(transcript: Fixture.text("write-flash-atoms3-lite.txt")),
-            .init(transcript: Fixture.text("identify-esp32s3.txt"), fingerprint: Data(hexString: s3.elfSha256)),
+            .init(transcript: Fixture.text("write-flash-s3.txt")),
+            .init(transcript: Fixture.text("identify-shinercore-s3.txt"), fingerprint: Data(hexString: s3.elfSha256)),
         ])
         let model = States.model(runner: runner)
         model.devices = [States.s3Port]

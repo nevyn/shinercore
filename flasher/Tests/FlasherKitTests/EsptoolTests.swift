@@ -4,20 +4,21 @@ import Testing
 
 @Suite struct EsptoolOutputTests {
     @Test func parsesChipAndMACOfAnESP32S3() throws {
-        let chip = try #require(ChipInfo(transcript: Fixture.text("identify-esp32s3.txt")))
-        #expect(chip == ChipInfo(chip: "esp32s3", description: "ESP32-S3 (QFN56) (revision v0.2)", mac: "dc:54:75:c8:e9:44"))
+        #expect(ChipInfo(transcript: Fixture.text("identify-blank-s3.txt"))?.chip == "esp32s3")
+        let chip = try #require(ChipInfo(transcript: Fixture.text("identify-shinercore-s3.txt")))
+        #expect(chip == ChipInfo(chip: "esp32s3", description: "ESP32-S3 (QFN56) (revision v0.2)", mac: "e8:f6:0a:98:1d:d8"))
     }
 
     @Test func parsesChipAndMACOfAnESP32() throws {
-        let chip = try #require(ChipInfo(transcript: Fixture.text("identify-esp32.txt")))
+        let chip = try #require(ChipInfo(transcript: Fixture.text("identify-esp32-handwritten.txt")))
         #expect(chip.chip == "esp32")
         #expect(chip.mac == "4c:75:25:a1:b2:c3")
     }
 
     @Test func classifiesKnownFailures() {
-        #expect(EsptoolFailure(transcript: Fixture.text("failure-port-busy.txt"), status: 2) == .portBusy)
-        #expect(EsptoolFailure(transcript: Fixture.text("failure-port-gone.txt"), status: 2) == .portGone)
-        #expect(EsptoolFailure(transcript: Fixture.text("failure-no-response.txt"), status: 2) == .noResponse)
+        #expect(EsptoolFailure(transcript: Fixture.text("failure-port-busy-handwritten.txt"), status: 2) == .portBusy)
+        #expect(EsptoolFailure(transcript: Fixture.text("failure-port-gone-handwritten.txt"), status: 2) == .portGone)
+        #expect(EsptoolFailure(transcript: Fixture.text("failure-no-response-handwritten.txt"), status: 2) == .noResponse)
         #expect(EsptoolFailure(transcript: "A fatal error occurred: MD5 of file does not match data in flash!", status: 2)
                 == .other("MD5 of file does not match data in flash!"))
         #expect(EsptoolFailure(transcript: "", status: -9) == .other("esptool exited with status -9"))
@@ -52,7 +53,7 @@ import Testing
         var progress = FlashProgress(parts: board.parts)
         var values: [Double] = []
         var afterBootApp0: Double?
-        for line in Fixture.text("write-flash-atoms3-lite.txt").split(whereSeparator: \.isNewline).map(String.init) {
+        for line in Fixture.text("write-flash-s3.txt").split(whereSeparator: \.isNewline).map(String.init) {
             if let value = progress.consume(line) { values.append(value) }
             if line.hasPrefix("Wrote 8192 bytes") { afterBootApp0 = values.last }
         }
@@ -127,15 +128,15 @@ import Testing
 
     @Test func identifiesAnAtomS3RunningTheLatestBuild() async throws {
         let s3 = try #require(builds[0].board(id: "atoms3-lite"))
-        let runner = ReplayRunner([.init(transcript: Fixture.text("identify-esp32s3.txt"), fingerprint: Data(hexString: s3.elfSha256))])
-        let identity = try await CoreFlasher(runner: runner).identify(port: "/dev/cu.usbmodem1101", builds: builds)
-        #expect(identity.chip.mac == "dc:54:75:c8:e9:44")
+        let runner = ReplayRunner([.init(transcript: Fixture.text("identify-shinercore-s3.txt"), fingerprint: Data(hexString: s3.elfSha256))])
+        let identity = try await CoreFlasher(runner: runner).identify(port: "/dev/cu.usbmodem1401", builds: builds)
+        #expect(identity.chip.mac == "e8:f6:0a:98:1d:d8")
         #expect(identity.status == .known(build: builds[0], board: s3, buildsBehind: 0))
-        #expect(runner.invocations.first?.prefix(5) == ["--port", "/dev/cu.usbmodem1101", "--baud", "115200", "read-flash"])
+        #expect(runner.invocations.first?.prefix(5) == ["--port", "/dev/cu.usbmodem1401", "--baud", "115200", "read-flash"])
     }
 
     @Test func identifyFailureNamesThePortAndKeepsTheOutput() async throws {
-        let runner = ReplayRunner([.init(transcript: Fixture.text("failure-port-busy.txt"), status: 2)])
+        let runner = ReplayRunner([.init(transcript: Fixture.text("failure-port-busy-handwritten.txt"), status: 2)])
         do {
             _ = try await CoreFlasher(runner: runner).identify(port: "/dev/cu.usbmodem1101", builds: builds)
             Issue.record("expected a failure")
@@ -151,7 +152,7 @@ import Testing
         let board = try #require(builds[0].board(id: "atom-lite"))
         let runner = ReplayRunner([
             .init(transcript: "A fatal error occurred: Serial data stream stopped: Possible serial noise or corruption.", status: 2),
-            .init(transcript: Fixture.text("write-flash-atoms3-lite.txt")),
+            .init(transcript: Fixture.text("write-flash-s3.txt")),
         ])
         let retries = Locked<[Int]>([])
         try await CoreFlasher(runner: runner).flash(port: "/dev/cu.usbserial-1", board: board,
@@ -163,7 +164,7 @@ import Testing
 
     @Test func doesNotRetryABusyPort() async throws {
         let board = try #require(builds[0].board(id: "atom-lite"))
-        let runner = ReplayRunner([.init(transcript: Fixture.text("failure-port-busy.txt"), status: 2)])
+        let runner = ReplayRunner([.init(transcript: Fixture.text("failure-port-busy-handwritten.txt"), status: 2)])
         await #expect(throws: OperationError.self) {
             try await CoreFlasher(runner: runner).flash(port: "/dev/cu.usbserial-1", board: board,
                                                         files: board.parts.map { URL(fileURLWithPath: "/c/\($0.file)") }, eraseAll: false)

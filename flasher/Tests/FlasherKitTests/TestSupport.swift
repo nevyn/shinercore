@@ -1,8 +1,8 @@
 import Foundation
 @testable import FlasherKit
 
-// The esptool transcripts in Fixtures/ follow esptool v5.6.0's output format as its source prints
-// it (esptool/cmds.py, esp_pylib/logger.py); none was captured from a core.
+// Fixtures/*-s3.txt are esptool v5.6.0 captures from an AtomS3 Lite. *-handwritten.txt follow
+// esptool's source; no ESP32 (CH552) board was attached to capture them.
 
 enum Fixture {
     static func url(_ name: String) -> URL {
