@@ -3,7 +3,11 @@ import FlasherKit
 import SwiftUI
 
 enum Theme {
-    static let accent = Color(red: 0.82, green: 0.22, blue: 0.92)
+    /// ShinerCore Remote's AccentColor; the darker light variant keeps text on white above 4.5:1.
+    static let accent = Color(nsColor: NSColor(name: nil) {
+        $0.isDark ? NSColor(srgbRed: 0.82, green: 0.22, blue: 0.92, alpha: 1)
+                  : NSColor(srgbRed: 0.68, green: 0.13, blue: 0.78, alpha: 1)
+    })
     /// The grouped page behind cards; in dark mode cards are lighter than the page, as on iOS.
     static let page = Color(nsColor: NSColor(name: nil) { $0.isDark ? NSColor(white: 0.11, alpha: 1) : .windowBackgroundColor })
     static let card = Color(nsColor: NSColor(name: nil) { $0.isDark ? NSColor(white: 0.18, alpha: 1) : .controlBackgroundColor })
