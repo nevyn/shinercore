@@ -5,6 +5,12 @@ import Foundation
 // esptool's source; no ESP32 (CH552) board was attached to capture them.
 
 enum Fixture {
+    /// Firmware marker bytes laid out as FirmwareMarker.h does.
+    static func marker(board: String) -> Data {
+        func field(_ text: String, _ size: Int) -> Data { Data(text.utf8) + Data(count: size - text.utf8.count) }
+        return field("ShinerCore/1", 16) + field(board, 16)
+    }
+
     static func url(_ name: String) -> URL {
         Bundle.module.url(forResource: "Fixtures/\(name)", withExtension: nil)!
     }
@@ -73,6 +79,8 @@ final class ReplayRunner: EsptoolRunner, @unchecked Sendable {
         var transcript: String
         var status: Int32 = 0
         var fingerprint: Data?
+        /// The firmware marker's bytes, written after the fingerprint at `EsptoolCommand.markerOffset`.
+        var marker: Data?
         /// Awaited before the step answers, to hold the operation in flight.
         var gate: (@Sendable () async -> Void)?
     }
@@ -90,7 +98,12 @@ final class ReplayRunner: EsptoolRunner, @unchecked Sendable {
         }
         await step.gate?()
         if let fingerprint = step.fingerprint, let output = arguments.last {
-            try fingerprint.write(to: URL(fileURLWithPath: output))
+            var read = Data(repeating: 0xff, count: EsptoolCommand.identifyLength)
+            read.replaceSubrange(0..<fingerprint.count, with: fingerprint)
+            if let marker = step.marker {
+                read.replaceSubrange(EsptoolCommand.markerOffset..<EsptoolCommand.markerOffset + marker.count, with: marker)
+            }
+            try read.write(to: URL(fileURLWithPath: output))
         }
         var splitter = LineSplitter()
         (splitter.append(Data(step.transcript.utf8)) + splitter.finish()).forEach(onLine)

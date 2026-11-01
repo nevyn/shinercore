@@ -53,8 +53,26 @@ the SHA-256 of the ELF into the app image header, at `esp_app_desc_t.app_elf_sha
 app image sits at flash `0x10000`, so the fingerprint is the 32 bytes at `0x100b0`.
 `build-firmware.sh` checks that each app image carries its ELF's SHA. The flasher reads
 those bytes with `esptool read-flash 0x100b0 32` and looks them up in the manifests'
-`elfSha256`. A miss means a local build or other firmware. Reading flash resets the core
-into its bootloader, so its lights go dark for a few seconds.
+`elfSha256`. Reading flash resets the core into its bootloader, so its lights go dark for a
+few seconds.
+
+## Firmware marker
+
+A fingerprint miss means a local build or other firmware. To tell them apart, the firmware
+defines a `FirmwareMarker` (FirmwareMarker.h) in the `.rodata_custom_desc` section, which
+the IDF linker script places right after the 256-byte `esp_app_desc_t`: flash `0x10120`.
+
+| offset | bytes | content |
+|---|---|---|
+| 0 | 16 | `ShinerCore/1`, NUL-padded; the number is the layout version |
+| 16 | 16 | the board id |
+
+The flasher reads `0x100b0` through the marker (144 bytes) in one `read-flash`. With a
+marker and no fingerprint match, it reports a local build and picks the marker's board.
+The marker carries no build time: arduino-cli reuses an unchanged file's object, so a
+`__DATE__` in it goes stale, and a local build's age can't be judged. Builds from before
+the marker read as other firmware. `build-firmware.sh` checks
+that each app image carries its marker. Nothing else may go in `.rodata_custom_desc`.
 
 ## Flashing preserves settings
 

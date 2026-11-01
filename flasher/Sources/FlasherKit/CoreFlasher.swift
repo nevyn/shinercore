@@ -35,7 +35,7 @@ public struct CoreFlasher: Sendable {
         self.temporaryDirectory = temporaryDirectory
     }
 
-    /// Reads the chip, MAC and fingerprint of the core on `port`. Restarts the core.
+    /// Reads the chip, MAC, fingerprint and firmware marker of the core on `port`. Restarts the core.
     /// - Parameter builds: Known firmware builds, newest first, to look the fingerprint up in.
     /// - Throws: ``OperationError`` with step `.identify`, or `CancellationError`.
     public func identify(port: String, builds: [FirmwareBuild],
@@ -50,10 +50,12 @@ public struct CoreFlasher: Sendable {
         guard let chip = ChipInfo(transcript: run.transcript) else {
             throw fail(.other("its output didn't name the chip and MAC"))
         }
-        guard let fingerprint = try? Data(contentsOf: output), fingerprint.count == EsptoolCommand.fingerprintLength else {
-            throw fail(.other("it didn't write the \(EsptoolCommand.fingerprintLength) fingerprint bytes to \(output.path)"))
+        guard let read = try? Data(contentsOf: output), read.count == EsptoolCommand.identifyLength else {
+            throw fail(.other("it didn't write the \(EsptoolCommand.identifyLength) bytes it read to \(output.path)"))
         }
-        return CoreIdentity(chip: chip, status: FirmwareStatus(fingerprint: fingerprint, builds: builds))
+        let fingerprint = read.prefix(EsptoolCommand.fingerprintLength)
+        let marker = FirmwareMarker(bytes: read.dropFirst(EsptoolCommand.markerOffset))
+        return CoreIdentity(chip: chip, status: FirmwareStatus(fingerprint: fingerprint, marker: marker, builds: builds))
     }
 
     /// Writes `files` to the core on `port` at `board.uploadSpeed`, retrying once at

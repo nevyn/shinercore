@@ -72,6 +72,8 @@ enum States {
             result.append((name, pair.0, pair.1))
         }
         add("detail-install", detail(.unknown(fingerprint: String(repeating: "12", count: 32))))
+        add("detail-local-build", detail(.localBuild(fingerprint: String(repeating: "12", count: 32),
+                                                     marker: FirmwareMarker(board: "atoms3-lite"))))
         add("detail-needs-board", detail(.noFirmware, chip: atomChip, port: atomPort))
         add("detail-update", detail(.known(build: builds[2], board: s3Board, buildsBehind: 2)))
         add("detail-up-to-date", detail(.known(build: latest, board: s3Board, buildsBehind: 0)))
@@ -169,6 +171,13 @@ enum States {
         #expect(session.primary == .install)
         #expect(model.title(for: session) == "M5Atom Echo")
         #expect(memory.boards["4c:75:25:a1:b2:c3"] == "atom-echo")
+    }
+
+    @Test func aLocalBuildIsShinerCoreOnItsOwnBoard() {
+        let (_, session) = States.detail(.localBuild(fingerprint: String(repeating: "12", count: 32), marker: FirmwareMarker(board: "atoms3-lite")))
+        #expect(session.summary == "ShinerCore, your own build")
+        #expect(session.primary == .install)
+        #expect(session.boardSelection?.reason == .running)
     }
 
     @Test func primaryActionFollowsTheRunningBuild() {

@@ -11,6 +11,7 @@
 #include "LayerAnimation.h"
 #include "ShinyTypes.h"
 #include "Transition.h"
+#include "FirmwareMarker.h"
 
 ////// Main state
 ShinySettings localPrefs;
@@ -82,6 +83,7 @@ void displayUpdate(M5GFX &display)
 void setup(void) {
     M5.begin();
     Serial.begin(115200);
+    Serial.printf("%s for %s\n", firmwareMarker.magic, firmwareMarker.board);
 
     M5.update();
 
